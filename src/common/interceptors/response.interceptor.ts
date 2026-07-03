@@ -9,15 +9,28 @@ import {
 import { Observable } from 'rxjs';
 import { map } from 'rxjs/operators';
 
+interface ApiResponse<T> {
+  success: boolean;
+  statusCode: number;
+  message: string;
+  data: T;
+}
+
 @Injectable()
-export class ResponseInterceptor<T> implements NestInterceptor<T, any> {
-  intercept(context: ExecutionContext, next: CallHandler): Observable<any> {
+export class ResponseInterceptor<T> implements NestInterceptor<
+  T,
+  ApiResponse<T>
+> {
+  intercept(
+    context: ExecutionContext,
+    next: CallHandler,
+  ): Observable<ApiResponse<T>> {
     return next.handle().pipe(
-      map((data) => ({
+      map((response) => ({
         success: true,
         statusCode: context.switchToHttp().getResponse().statusCode,
-        message: data?.message || 'Request successful',
-        data: data?.data ?? data,
+        message: response?.message ?? 'Request successful',
+        data: response?.data ?? response,
       })),
     );
   }

@@ -1,12 +1,14 @@
 import { Injectable } from '@nestjs/common';
+import { User } from '@prisma/client';
+import { ResponseDto } from 'src/common/dto/response.dto';
 import { PrismaService } from 'src/database/prisma/prisma.service';
 
 @Injectable()
 export class UserService {
   constructor(private readonly prisma: PrismaService) {}
 
-  findAll() {
-    return [];
+  findAll(): ResponseDto<User[]> {
+    return { data: [], message: 'Users fetched successfully' };
   }
 
   // async create(email: string, password: string) {
