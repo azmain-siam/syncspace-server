@@ -5,9 +5,11 @@ import {
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { JwtService } from '@nestjs/jwt';
+import { User } from '@prisma/client';
 import * as bcrypt from 'bcrypt';
 import { PrismaService } from 'src/database/prisma/prisma.service';
 import { BCRYPT_SALT_ROUNDS } from './auth.constants';
+import { LoginDto } from './dto/login.dto';
 import { RegisterDto } from './dto/register.dto';
 
 @Injectable()
@@ -42,11 +44,8 @@ export class AuthService {
 
     const tokens = await this.generateTokens(user.id, user.email);
 
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    const { password, ...safeUser } = user;
-
     return {
-      user: safeUser,
+      user: this.sanitizeUser(user),
       tokens,
     };
   }
@@ -69,19 +68,29 @@ export class AuthService {
     return user;
   }
 
-  async login(email: string, password: string) {
-    const user = await this.validateUser(email, password);
+  async login(dto: LoginDto) {
+    const user = await this.prisma.user.findUnique({
+      where: {
+        email: dto.email,
+      },
+    });
 
-    const tokens = this.generateTokens(user.id, user.email);
+    if (!user) {
+      throw new UnauthorizedException('Invalid credentials');
+    }
 
-    // const hashedRefreshToken = await bcrypt.hash(tokens.refreshToken, 10);
+    const isPasswordMatched = await bcrypt.compare(dto.password, user.password);
 
-    // await this.prisma.user.update({
-    //   where: { id: user.id },
-    //   data: { refreshToken: hashedRefreshToken },
-    // });
+    if (!isPasswordMatched) {
+      throw new UnauthorizedException('Invalid credentials');
+    }
 
-    return tokens;
+    const tokens = await this.generateTokens(user.id, user.email);
+
+    return {
+      user: this.sanitizeUser(user),
+      tokens,
+    };
   }
 
   // async logout(userId: string) {
@@ -113,5 +122,11 @@ export class AuthService {
       accessToken,
       refreshToken,
     };
+  }
+
+  private sanitizeUser(user: User) {
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    const { password, ...safeUser } = user;
+    return safeUser;
   }
 }

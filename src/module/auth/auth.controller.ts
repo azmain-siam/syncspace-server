@@ -15,8 +15,9 @@ export class AuthController {
   }
 
   @Post('login')
+  @ResponseMessage('User logged in successfully')
   login(@Body() dto: LoginDto) {
-    return this.authService.login(dto.email, dto.password);
+    return this.authService.login(dto);
   }
 
   // @Post('logout')
