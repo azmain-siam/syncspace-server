@@ -1,7 +1,11 @@
 import * as Joi from 'joi';
 
 export const validationSchema = Joi.object({
-  PORT: Joi.number().default(3000),
+  NODE_ENV: Joi.string()
+    .valid('development', 'production', 'test')
+    .default('development'),
+
+  PORT: Joi.number().default(5000),
 
   DATABASE_URL: Joi.string().required(),
 
@@ -11,6 +15,6 @@ export const validationSchema = Joi.object({
   JWT_ACCESS_EXPIRES_IN: Joi.string().default('1d'),
   JWT_REFRESH_EXPIRES_IN: Joi.string().default('90d'),
 
-  EMAIL_USER: Joi.string().required(),
+  EMAIL_USER: Joi.string().email().required(),
   EMAIL_PASS: Joi.string().required(),
 });
