@@ -1,8 +1,14 @@
-import { Injectable, UnauthorizedException } from '@nestjs/common';
+import {
+  BadRequestException,
+  Injectable,
+  UnauthorizedException,
+} from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { JwtService } from '@nestjs/jwt';
 import * as bcrypt from 'bcrypt';
 import { PrismaService } from 'src/database/prisma/prisma.service';
+import { BCRYPT_SALT_ROUNDS } from './auth.constants';
+import { RegisterDto } from './dto/register.dto';
 
 @Injectable()
 export class AuthService {
@@ -12,20 +18,37 @@ export class AuthService {
     private jwtService: JwtService,
   ) {}
 
-  private generateTokens(userId: string, email: string) {
-    const payload = { sub: userId, email };
-
-    const accessToken = this.jwtService.sign(payload, {
-      secret: this.configService.get('jwt.accessSecret'),
-      expiresIn: this.configService.get('jwt.accessExpiresIn'),
+  async register(dto: RegisterDto) {
+    const existingUser = await this.prisma.user.findUnique({
+      where: {
+        email: dto.email,
+      },
     });
 
-    const refreshToken = this.jwtService.sign(payload, {
-      secret: this.configService.get('jwt.refreshSecret'),
-      expiresIn: this.configService.get('jwt.refreshExpiresIn'),
+    if (existingUser) {
+      throw new BadRequestException('Email already exists');
+    }
+
+    const hashedPassword = await bcrypt.hash(dto.password, BCRYPT_SALT_ROUNDS);
+
+    const user = await this.prisma.user.create({
+      data: {
+        name: dto.name,
+        email: dto.email,
+        phone: dto.phone,
+        password: hashedPassword,
+      },
     });
 
-    return { accessToken, refreshToken };
+    const tokens = await this.generateTokens(user.id, user.email);
+
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    const { password, ...safeUser } = user;
+
+    return {
+      user: safeUser,
+      tokens,
+    };
   }
 
   async validateUser(email: string, password: string) {
@@ -69,4 +92,26 @@ export class AuthService {
 
   //   return { message: 'Logged out successfully' };
   // }
+
+  async generateTokens(userId: string, email: string) {
+    const payload = {
+      sub: userId,
+      email,
+    };
+
+    const accessToken = await this.jwtService.signAsync(payload, {
+      secret: this.configService.get('jwt.accessSecret'),
+      expiresIn: this.configService.get('jwt.accessExpiresIn'),
+    });
+
+    const refreshToken = await this.jwtService.signAsync(payload, {
+      secret: this.configService.get('jwt.refreshSecret'),
+      expiresIn: this.configService.get('jwt.refreshExpiresIn'),
+    });
+
+    return {
+      accessToken,
+      refreshToken,
+    };
+  }
 }

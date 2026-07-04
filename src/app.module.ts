@@ -1,8 +1,10 @@
 import { MailerModule } from '@nestjs-modules/mailer';
 import { Module } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
-import { APP_GUARD } from '@nestjs/core';
+import { APP_GUARD, APP_INTERCEPTOR } from '@nestjs/core';
+import { JwtModule } from '@nestjs/jwt';
 import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler';
+import { ResponseInterceptor } from './common/interceptors/response.interceptor';
 import configuration from './config/configuration';
 import { validationSchema } from './config/validation';
 import { PrismaModule } from './database/prisma/prisma.module';
@@ -13,6 +15,7 @@ import { WorkspaceModule } from './module/workspace/workspace.module';
 
 @Module({
   imports: [
+    JwtModule.register({}),
     ConfigModule.forRoot({
       isGlobal: true,
       load: [configuration],
@@ -29,14 +32,7 @@ import { WorkspaceModule } from './module/workspace/workspace.module';
     //         : undefined,
     //   },
     // }),
-    ThrottlerModule.forRoot({
-      throttlers: [
-        {
-          ttl: 60000, // 10 requests per minute for each IP
-          limit: 10,
-        },
-      ],
-    }),
+    ThrottlerModule.forRoot({ throttlers: [{ ttl: 60000, limit: 10 }] }),
     MailerModule.forRootAsync({
       inject: [ConfigService],
       useFactory: (config: ConfigService) => ({
@@ -56,10 +52,8 @@ import { WorkspaceModule } from './module/workspace/workspace.module';
     WorkspaceModule,
   ],
   providers: [
-    {
-      provide: APP_GUARD,
-      useClass: ThrottlerGuard,
-    },
+    { provide: APP_INTERCEPTOR, useClass: ResponseInterceptor },
+    { provide: APP_GUARD, useClass: ThrottlerGuard },
     EmailService,
   ],
 })

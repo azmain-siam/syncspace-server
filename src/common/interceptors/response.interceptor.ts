@@ -6,31 +6,31 @@ import {
   Injectable,
   NestInterceptor,
 } from '@nestjs/common';
+import { Reflector } from '@nestjs/core';
 import { Observable } from 'rxjs';
 import { map } from 'rxjs/operators';
-
-interface ApiResponse<T> {
-  success: boolean;
-  statusCode: number;
-  message: string;
-  data: T;
-}
+import { RESPONSE_MESSAGE_KEY } from '../decorators/response-message.decorator';
+import { ApiResponse } from '../interfaces/response.interface';
 
 @Injectable()
-export class ResponseInterceptor<T> implements NestInterceptor<
-  T,
-  ApiResponse<T>
-> {
+export class ResponseInterceptor<T> implements NestInterceptor {
+  constructor(private readonly reflector: Reflector) {}
+
   intercept(
     context: ExecutionContext,
     next: CallHandler,
   ): Observable<ApiResponse<T>> {
+    const customMessage = this.reflector.get<string>(
+      RESPONSE_MESSAGE_KEY,
+      context.getHandler(),
+    );
+
     return next.handle().pipe(
-      map((response) => ({
+      map((data) => ({
         success: true,
         statusCode: context.switchToHttp().getResponse().statusCode,
-        message: response?.message ?? 'Request successful',
-        data: response?.data ?? response,
+        message: customMessage ?? 'Request successful',
+        data,
       })),
     );
   }
