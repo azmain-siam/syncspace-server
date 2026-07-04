@@ -9,6 +9,7 @@ import { PrismaModule } from './database/prisma/prisma.module';
 import { AuthModule } from './module/auth/auth.module';
 import { EmailService } from './module/email/email.service';
 import { UserModule } from './module/user/user.module';
+import { WorkspaceModule } from './module/workspace/workspace.module';
 
 @Module({
   imports: [
@@ -52,6 +53,7 @@ import { UserModule } from './module/user/user.module';
     PrismaModule,
     UserModule,
     AuthModule,
+    WorkspaceModule,
   ],
   providers: [
     {
