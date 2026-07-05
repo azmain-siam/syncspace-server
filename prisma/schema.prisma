@@ -8,13 +8,14 @@ datasource db {
 
 // MODELS
 model User {
-  id              String  @id @default(uuid())
-  name            String
-  email           String  @unique
-  phone           String? @unique
-  password        String
-  avatar          String?
-  isEmailVerified Boolean @default(false)
+  id                 String  @id @default(uuid())
+  name               String
+  email              String  @unique
+  phone              String? @unique
+  password           String
+  avatar             String?
+  isEmailVerified    Boolean @default(false)
+  hashedRefreshToken String?
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt

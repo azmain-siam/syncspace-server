@@ -11,7 +11,7 @@ export class JwtStrategy extends PassportStrategy(Strategy, 'jwt') {
     private readonly configService: ConfigService,
     private readonly prisma: PrismaService,
   ) {
-    const secret = configService.get<string>('JWT_ACCESS_SECRET');
+    const secret = configService.get<string>('jwt.accessSecret');
     if (!secret) {
       throw new Error('JWT_ACCESS_SECRET is not configured');
     }
