@@ -11,6 +11,7 @@ import { PrismaService } from '../prisma/prisma.service';
 import { BCRYPT_SALT_ROUNDS } from './auth.constants';
 import { LoginDto } from './dto/login.dto';
 import { RegisterDto } from './dto/register.dto';
+import { JwtPayload } from './interfaces/jwt-payload.interface';
 
 @Injectable()
 export class AuthService {
@@ -103,7 +104,7 @@ export class AuthService {
   // }
 
   async generateTokens(userId: string, email: string) {
-    const payload = {
+    const payload: JwtPayload = {
       sub: userId,
       email,
     };
