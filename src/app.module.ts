@@ -7,9 +7,9 @@ import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler';
 import { ResponseInterceptor } from './common/interceptors/response.interceptor';
 import configuration from './config/configuration';
 import { validationSchema } from './config/validation';
-import { PrismaModule } from './database/prisma/prisma.module';
 import { AuthModule } from './module/auth/auth.module';
 import { EmailService } from './module/email/email.service';
+import { PrismaModule } from './module/prisma/prisma.module';
 import { UserModule } from './module/user/user.module';
 import { WorkspaceModule } from './module/workspace/workspace.module';
 
