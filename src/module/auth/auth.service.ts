@@ -98,6 +98,15 @@ export class AuthService {
     return tokens;
   }
 
+  async logout(userId: string) {
+    await this.prisma.user.update({
+      where: { id: userId },
+      data: { hashedRefreshToken: null },
+    });
+
+    return null;
+  }
+
   async generateTokens(userId: string, email: string) {
     const payload: JwtPayload = {
       sub: userId,

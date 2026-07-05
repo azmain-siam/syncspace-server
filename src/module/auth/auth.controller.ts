@@ -5,6 +5,7 @@ import type { User } from 'src/common/interfaces/user.interface';
 import { AuthService } from './auth.service';
 import { LoginDto } from './dto/login.dto';
 import { RegisterDto } from './dto/register.dto';
+import { JwtAuthGuard } from './guards/jwt-auth.guard';
 import { RefreshTokenGuard } from './guards/refresh-auth.guard';
 
 @Controller('auth')
@@ -30,8 +31,10 @@ export class AuthController {
     return this.authService.refresh(user.id);
   }
 
-  // @Post('logout')
-  // logout(@Body('userId') userId: string) {
-  //   return this.authService.logout(userId);
-  // }
+  @Post('logout')
+  @UseGuards(JwtAuthGuard)
+  @ResponseMessage('User logged out successfully')
+  logout(@CurrentUser() user: User) {
+    return this.authService.logout(user.id);
+  }
 }
