@@ -7,7 +7,10 @@ import { CreateWorkspaceDto } from './dto/create-workspace.dto';
 export class WorkspaceService {
   constructor(private readonly prisma: PrismaService) {}
 
-  async create(createWorkspaceDto: CreateWorkspaceDto, userId: string) {
+  async createWorkspace(
+    createWorkspaceDto: CreateWorkspaceDto,
+    userId: string,
+  ) {
     return this.prisma.$transaction(async (tx) => {
       const workspace = await tx.workspace.create({
         data: {
@@ -28,5 +31,18 @@ export class WorkspaceService {
 
       return workspace;
     });
+  }
+
+  async getMyWorkspaces(userId: string) {
+    const workspaces = await this.prisma.workspaceMember.findMany({
+      where: {
+        userId,
+      },
+      include: {
+        workspace: true,
+      },
+    });
+
+    return workspaces.map((workspaceMember) => workspaceMember.workspace);
   }
 }

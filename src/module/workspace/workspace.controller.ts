@@ -1,10 +1,10 @@
-import { Body, Controller, Post, UseGuards } from '@nestjs/common';
+import { Body, Controller, Get, Post, UseGuards } from '@nestjs/common';
 import { CurrentUser } from 'src/common/decorators/get-user.decorator';
 import { ResponseMessage } from 'src/common/decorators/response-message.decorator';
 import type { User } from 'src/common/interfaces/user.interface';
+import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { CreateWorkspaceDto } from './dto/create-workspace.dto';
 import { WorkspaceService } from './workspace.service';
-import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 
 @Controller('workspace')
 export class WorkspaceController {
@@ -13,10 +13,17 @@ export class WorkspaceController {
   @Post()
   @UseGuards(JwtAuthGuard)
   @ResponseMessage('Workspace created successfully')
-  create(
+  createWorkspace(
     @Body() createWorkspaceDto: CreateWorkspaceDto,
     @CurrentUser() user: User,
   ) {
-    return this.workspaceService.create(createWorkspaceDto, user.id);
+    return this.workspaceService.createWorkspace(createWorkspaceDto, user.id);
+  }
+
+  @Get()
+  @UseGuards(JwtAuthGuard)
+  @ResponseMessage('Workspaces fetched successfully')
+  getMyWorkspaces(@CurrentUser() user: User) {
+    return this.workspaceService.getMyWorkspaces(user.id);
   }
 }
