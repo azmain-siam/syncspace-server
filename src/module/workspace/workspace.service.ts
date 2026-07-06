@@ -124,4 +124,14 @@ export class WorkspaceService {
         'You are not allowed to perform this action',
       );
   }
+
+  validateWorkspacePermissio1n(
+    memberRole: WorkspaceRole,
+    allowedRoles: WorkspaceRole[],
+  ) {
+    if (!allowedRoles.includes(memberRole))
+      throw new ForbiddenException(
+        'You are not allowed to perform this action',
+      );
+  }
 }
