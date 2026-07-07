@@ -31,11 +31,13 @@ model User {
 }
 
 model Workspace {
-  id      String  @id @default(uuid())
-  name    String
-  slug    String  @unique
-  logo    String?
-  ownerId String
+  id          String              @id @default(uuid())
+  name        String
+  slug        String              @unique
+  description String?
+  logo        String?
+  ownerId     String
+  visibility  WorkspaceVisibility @default(PRIVATE)
 
   createdAt DateTime  @default(now())
   updatedAt DateTime  @updatedAt
@@ -205,6 +207,11 @@ enum WorkspaceRole {
   OWNER
   ADMIN
   MEMBER
+}
+
+enum WorkspaceVisibility {
+  PRIVATE
+  PUBLIC
 }
 
 enum ProjectStatus {
