@@ -146,12 +146,6 @@ export class WorkspaceService {
       throw new BadRequestException('Owner cannot be removed');
     }
 
-    // await this.prisma.workspaceMember.delete({
-    //   where: {
-    //     id: memberId,
-    //   },
-    // });
-
     await this.prisma.$transaction(async (tx) => {
       await tx.workspaceMember.delete({
         where: {
