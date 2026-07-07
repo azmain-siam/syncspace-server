@@ -1,14 +1,24 @@
-import { Body, Controller, Get, Param, Post, UseGuards } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Delete,
+  Get,
+  Param,
+  Patch,
+  Post,
+  UseGuards,
+} from '@nestjs/common';
 import { CurrentUser } from 'src/common/decorators/get-user.decorator';
 import { ResponseMessage } from 'src/common/decorators/response-message.decorator';
+import { WorkspaceRoles } from 'src/common/decorators/workspace-roles.decorator';
 import { WorkspaceRoleGuard } from 'src/common/guards/workspace-role.guard';
 import type { User } from 'src/common/interfaces/user.interface';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { CreateWorkspaceDto } from './dto/create-workspace.dto';
 import { InviteMemberDto } from './dto/invite-member.dto';
-import { WorkspaceService } from './workspace.service';
-import { WorkspaceRoles } from 'src/common/decorators/workspace-roles.decorator';
+import { UpdateMemberRoleDto } from './dto/update-member-role.dto';
 import { WorkspaceRole } from './enums/workspace-role.enum';
+import { WorkspaceService } from './workspace.service';
 
 @Controller('workspace')
 export class WorkspaceController {
@@ -40,6 +50,29 @@ export class WorkspaceController {
     @Body() dto: InviteMemberDto,
   ) {
     return this.workspaceService.inviteMember(workspaceId, dto);
+  }
+
+  @Delete(':workspaceId/members/:userId')
+  @UseGuards(JwtAuthGuard, WorkspaceRoleGuard)
+  @WorkspaceRoles(WorkspaceRole.OWNER, WorkspaceRole.ADMIN)
+  @ResponseMessage('Member removed successfully')
+  removeMember(
+    @Param('workspaceId') workspaceId: string,
+    @Param('userId') userId: string,
+  ) {
+    return this.workspaceService.removeWorkspaceMember(workspaceId, userId);
+  }
+
+  @Patch(':workspaceId/members/:memberId/role')
+  @UseGuards(JwtAuthGuard, WorkspaceRoleGuard)
+  @WorkspaceRoles(WorkspaceRole.OWNER, WorkspaceRole.ADMIN)
+  @ResponseMessage('Member role updated successfully')
+  updateMemberRole(
+    @Param('workspaceId') workspaceId: string,
+    @Param('memberId') memberId: string,
+    @Body() dto: UpdateMemberRoleDto,
+  ) {
+    return this.workspaceService.updateMemberRole(workspaceId, memberId, dto);
   }
 
   @Get(':workspaceId/members')
