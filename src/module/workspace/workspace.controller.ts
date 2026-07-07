@@ -18,7 +18,7 @@ import { CreateWorkspaceDto } from './dto/create-workspace.dto';
 import { InviteMemberDto } from './dto/invite-member.dto';
 import { TransferOwnershipDto } from './dto/transfer-ownership.dto';
 import { UpdateMemberRoleDto } from './dto/update-member-role.dto';
-import { UpdateWorkspaceSettingsDto } from './dto/update-setttings.dto';
+import { UpdateWorkspaceSettingsDto } from './dto/update-settings.dto';
 import { WorkspaceRole } from './enums/workspace-role.enum';
 import { WorkspaceService } from './workspace.service';
 
