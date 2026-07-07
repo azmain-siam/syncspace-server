@@ -38,4 +38,14 @@ export class WorkspaceController {
   ) {
     return this.workspaceService.inviteMember(workspaceId, dto, user.id);
   }
+
+  @Get(':workspaceId/members')
+  @UseGuards(JwtAuthGuard)
+  @ResponseMessage('Members fetched successfully')
+  getWorkspaceMembers(
+    @Param('workspaceId') workspaceId: string,
+    @CurrentUser() user: User,
+  ) {
+    return this.workspaceService.getWorkspaceMembers(workspaceId, user.id);
+  }
 }

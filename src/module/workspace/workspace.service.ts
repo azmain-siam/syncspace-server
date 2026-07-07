@@ -99,6 +99,29 @@ export class WorkspaceService {
     });
   }
 
+  async getWorkspaceMembers(workspaceId: string, userId: string) {
+    const workspace = await this.prisma.workspace.findUnique({
+      where: {
+        id: workspaceId,
+        ownerId: userId,
+      },
+    });
+
+    if (!workspace) {
+      throw new ForbiddenException('You are not a member of this workspace');
+    }
+    const members = await this.prisma.workspaceMember.findMany({
+      where: {
+        workspaceId,
+      },
+      include: {
+        user: true,
+      },
+    });
+
+    return members;
+  }
+
   async validateWorkspaceAccess(workspaceId: string, userId: string) {
     const member = await this.prisma.workspaceMember.findUnique({
       where: {
