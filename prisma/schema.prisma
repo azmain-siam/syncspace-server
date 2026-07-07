@@ -20,14 +20,15 @@ model User {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  ownedWorkspaces  Workspace[]       @relation("WorkspaceOwner")
-  workspaceMembers WorkspaceMember[]
-  assignedTasks    Task[]            @relation("TaskAssignee")
-  createdProjects  Project[]         @relation("ProjectCreator")
-  createdTasks     Task[]            @relation("TaskCreator")
-  comments         Comment[]
-  uploadedFiles    Attachment[]
-  activities       ActivityLog[]
+  ownedWorkspaces     Workspace[]         @relation("WorkspaceOwner")
+  workspaceMembers    WorkspaceMember[]
+  assignedTasks       Task[]              @relation("TaskAssignee")
+  createdProjects     Project[]           @relation("ProjectCreator")
+  createdTasks        Task[]              @relation("TaskCreator")
+  comments            Comment[]
+  uploadedFiles       Attachment[]
+  activities          ActivityLog[]
+  workspaceActivities WorkspaceActivity[]
 }
 
 model Workspace {
@@ -43,10 +44,11 @@ model Workspace {
   updatedAt DateTime  @updatedAt
   deletedAt DateTime?
 
-  owner      User              @relation("WorkspaceOwner", fields: [ownerId], references: [id])
-  members    WorkspaceMember[]
-  projects   Project[]
-  activities ActivityLog[]
+  owner               User                @relation("WorkspaceOwner", fields: [ownerId], references: [id])
+  members             WorkspaceMember[]
+  projects            Project[]
+  activities          ActivityLog[]
+  workspaceActivities WorkspaceActivity[]
 
   @@index([ownerId])
 }
@@ -65,6 +67,22 @@ model WorkspaceMember {
   @@unique([workspaceId, userId])
   @@index([workspaceId])
   @@index([userId])
+}
+
+model WorkspaceActivity {
+  id          String  @id @default(uuid())
+  workspaceId String
+  actorId     String
+  action      String
+  description String?
+  metadata    Json?
+
+  createdAt DateTime @default(now())
+
+  workspace Workspace @relation(fields: [workspaceId], references: [id])
+  actor     User      @relation(fields: [actorId], references: [id])
+
+  @@index([workspaceId])
 }
 
 model Project {

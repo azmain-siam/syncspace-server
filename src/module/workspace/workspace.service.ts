@@ -4,7 +4,7 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
-import { WorkspaceRole } from '@prisma/client';
+import { Prisma, WorkspaceRole } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateWorkspaceDto } from './dto/create-workspace.dto';
 import { InviteMemberDto } from './dto/invite-member.dto';
@@ -243,5 +243,23 @@ export class WorkspaceService {
     });
 
     return updatedWorkspace;
+  }
+
+  createActivityLog(
+    workspaceId: string,
+    actorId: string,
+    action: string,
+    description?: string,
+    metadata?: Prisma.InputJsonValue,
+  ) {
+    return this.prisma.workspaceActivity.create({
+      data: {
+        workspaceId,
+        actorId,
+        action,
+        description,
+        metadata,
+      },
+    });
   }
 }
