@@ -53,8 +53,9 @@ export class WorkspaceController {
   inviteMember(
     @Param('workspaceId') workspaceId: string,
     @Body() dto: InviteMemberDto,
+    @CurrentUser() user: User,
   ) {
-    return this.workspaceService.inviteMember(workspaceId, dto);
+    return this.workspaceService.inviteMember(workspaceId, dto, user.id);
   }
 
   // Remove member from workspace
@@ -65,8 +66,13 @@ export class WorkspaceController {
   removeMember(
     @Param('workspaceId') workspaceId: string,
     @Param('userId') userId: string,
+    @CurrentUser() user: User,
   ) {
-    return this.workspaceService.removeWorkspaceMember(workspaceId, userId);
+    return this.workspaceService.removeWorkspaceMember(
+      workspaceId,
+      userId,
+      user,
+    );
   }
 
   // Update member role
@@ -78,8 +84,14 @@ export class WorkspaceController {
     @Param('workspaceId') workspaceId: string,
     @Param('memberId') memberId: string,
     @Body() dto: UpdateMemberRoleDto,
+    @CurrentUser() user: User,
   ) {
-    return this.workspaceService.updateMemberRole(workspaceId, memberId, dto);
+    return this.workspaceService.updateMemberRole(
+      workspaceId,
+      memberId,
+      dto,
+      user,
+    );
   }
 
   // Transfer ownership
