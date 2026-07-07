@@ -5,7 +5,6 @@ import { SwaggerModule } from '@nestjs/swagger';
 import helmet from 'helmet';
 import { AppModule } from './app.module';
 import { HttpExceptionFilter } from './common/filters/http-exception.filter';
-import { ResponseInterceptor } from './common/interceptors/response.interceptor';
 import { swaggerConfig, swaggerCustomOptions } from './config/swagger.config';
 
 async function bootstrap() {
@@ -22,7 +21,6 @@ async function bootstrap() {
     exclude: ['/health'],
   });
 
-  app.useGlobalInterceptors(new ResponseInterceptor());
   app.useGlobalFilters(new HttpExceptionFilter());
   app.useGlobalPipes(
     new ValidationPipe({
