@@ -13,6 +13,11 @@ export class UpdateWorkspaceSettingsDto {
   @IsString()
   description?: string;
 
+  @ApiProperty({ example: 'https://example.com/logo.png' })
+  @IsOptional()
+  @IsString()
+  logo?: string;
+
   @ApiProperty({
     example: WorkspaceVisibility.PUBLIC,
     enum: WorkspaceVisibility,

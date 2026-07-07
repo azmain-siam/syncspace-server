@@ -10,6 +10,7 @@ import { CreateWorkspaceDto } from './dto/create-workspace.dto';
 import { InviteMemberDto } from './dto/invite-member.dto';
 import { TransferOwnershipDto } from './dto/transfer-ownership.dto';
 import { UpdateMemberRoleDto } from './dto/update-member-role.dto';
+import { UpdateWorkspaceSettingsDto } from './dto/update-setttings.dto';
 
 @Injectable()
 export class WorkspaceService {
@@ -213,5 +214,34 @@ export class WorkspaceService {
     });
 
     return members;
+  }
+
+  async updateWorkspaceSettings(
+    workspaceId: string,
+    dto: UpdateWorkspaceSettingsDto,
+  ) {
+    const workspace = await this.prisma.workspace.findUnique({
+      where: {
+        id: workspaceId,
+      },
+    });
+
+    if (!workspace) {
+      throw new NotFoundException('Workspace not found');
+    }
+
+    const updatedWorkspace = await this.prisma.workspace.update({
+      where: {
+        id: workspaceId,
+      },
+      data: {
+        name: dto.name ?? workspace.name,
+        description: dto.description ?? workspace.description,
+        logo: dto.logo ?? workspace.logo,
+        visibility: dto.visibility ?? workspace.visibility,
+      },
+    });
+
+    return updatedWorkspace;
   }
 }
