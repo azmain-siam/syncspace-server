@@ -8,6 +8,8 @@ import { WorkspaceRole } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateWorkspaceDto } from './dto/create-workspace.dto';
 import { InviteMemberDto } from './dto/invite-member.dto';
+import { TransferOwnershipDto } from './dto/transfer-ownership.dto';
+import { UpdateMemberRoleDto } from './dto/update-member-role.dto';
 
 @Injectable()
 export class WorkspaceService {
@@ -113,7 +115,7 @@ export class WorkspaceService {
   async updateMemberRole(
     workspaceId: string,
     memberId: string,
-    dto: { role: WorkspaceRole },
+    dto: UpdateMemberRoleDto,
   ) {
     const member = await this.prisma.workspaceMember.findUnique({
       where: {
@@ -134,7 +136,7 @@ export class WorkspaceService {
 
     const updatedMember = await this.prisma.workspaceMember.update({
       where: {
-        id: memberId,
+        workspaceId_userId: { workspaceId, userId: memberId },
       },
       data: {
         role: dto.role,
@@ -142,6 +144,52 @@ export class WorkspaceService {
     });
 
     return updatedMember;
+  }
+
+  async transferOwnership(
+    workspaceId: string,
+    dto: TransferOwnershipDto,
+    currentOwnerId: string,
+  ) {
+    await this.prisma.$transaction(async (tx) => {
+      // update ownership
+      await tx.workspace.update({
+        where: {
+          id: workspaceId,
+        },
+        data: {
+          ownerId: dto.memberId,
+        },
+      });
+
+      // update current owner role to ADMIN
+      await tx.workspaceMember.update({
+        where: {
+          workspaceId_userId: {
+            workspaceId,
+            userId: currentOwnerId,
+          },
+        },
+        data: {
+          role: WorkspaceRole.ADMIN,
+        },
+      });
+
+      // update new owner role to OWNER
+      await tx.workspaceMember.update({
+        where: {
+          workspaceId_userId: {
+            workspaceId,
+            userId: dto.memberId,
+          },
+        },
+        data: {
+          role: WorkspaceRole.OWNER,
+        },
+      });
+
+      return null;
+    });
   }
 
   async getWorkspaceMembers(workspaceId: string, userId: string) {

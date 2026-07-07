@@ -16,6 +16,7 @@ import type { User } from 'src/common/interfaces/user.interface';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { CreateWorkspaceDto } from './dto/create-workspace.dto';
 import { InviteMemberDto } from './dto/invite-member.dto';
+import { TransferOwnershipDto } from './dto/transfer-ownership.dto';
 import { UpdateMemberRoleDto } from './dto/update-member-role.dto';
 import { WorkspaceRole } from './enums/workspace-role.enum';
 import { WorkspaceService } from './workspace.service';
@@ -24,6 +25,7 @@ import { WorkspaceService } from './workspace.service';
 export class WorkspaceController {
   constructor(private readonly workspaceService: WorkspaceService) {}
 
+  // Create workspace
   @Post()
   @UseGuards(JwtAuthGuard)
   @ResponseMessage('Workspace created successfully')
@@ -34,6 +36,7 @@ export class WorkspaceController {
     return this.workspaceService.createWorkspace(createWorkspaceDto, user.id);
   }
 
+  // Get my workspaces
   @Get()
   @UseGuards(JwtAuthGuard)
   @ResponseMessage('Workspaces fetched successfully')
@@ -41,6 +44,7 @@ export class WorkspaceController {
     return this.workspaceService.getMyWorkspaces(user.id);
   }
 
+  // Invite member to workspace
   @Post(':workspaceId/members')
   @UseGuards(JwtAuthGuard, WorkspaceRoleGuard)
   @WorkspaceRoles(WorkspaceRole.OWNER, WorkspaceRole.ADMIN)
@@ -52,6 +56,7 @@ export class WorkspaceController {
     return this.workspaceService.inviteMember(workspaceId, dto);
   }
 
+  // Remove member from workspace
   @Delete(':workspaceId/members/:userId')
   @UseGuards(JwtAuthGuard, WorkspaceRoleGuard)
   @WorkspaceRoles(WorkspaceRole.OWNER, WorkspaceRole.ADMIN)
@@ -63,6 +68,7 @@ export class WorkspaceController {
     return this.workspaceService.removeWorkspaceMember(workspaceId, userId);
   }
 
+  // Update member role
   @Patch(':workspaceId/members/:memberId/role')
   @UseGuards(JwtAuthGuard, WorkspaceRoleGuard)
   @WorkspaceRoles(WorkspaceRole.OWNER, WorkspaceRole.ADMIN)
@@ -75,6 +81,20 @@ export class WorkspaceController {
     return this.workspaceService.updateMemberRole(workspaceId, memberId, dto);
   }
 
+  // Transfer ownership
+  @Patch(':workspaceId/transfer-ownership')
+  @UseGuards(JwtAuthGuard, WorkspaceRoleGuard)
+  @WorkspaceRoles(WorkspaceRole.OWNER)
+  @ResponseMessage('Ownership transferred successfully')
+  transferOwnership(
+    @Param('workspaceId') workspaceId: string,
+    @Body() dto: TransferOwnershipDto,
+    @CurrentUser() user: User,
+  ) {
+    return this.workspaceService.transferOwnership(workspaceId, dto, user.id);
+  }
+
+  // Get workspace members
   @Get(':workspaceId/members')
   @UseGuards(JwtAuthGuard)
   @ResponseMessage('Members fetched successfully')
