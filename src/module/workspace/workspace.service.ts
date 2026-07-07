@@ -49,23 +49,7 @@ export class WorkspaceService {
     return workspaces;
   }
 
-  async inviteMember(
-    workspaceId: string,
-    dto: InviteMemberDto,
-    userId: string,
-  ) {
-    // validate current user
-    const currentMember = await this.validateWorkspaceAccess(
-      workspaceId,
-      userId,
-    );
-
-    // validate permissions
-    this.validateWorkspacePermission(currentMember.role, [
-      WorkspaceRole.OWNER,
-      WorkspaceRole.ADMIN,
-    ]);
-
+  async inviteMember(workspaceId: string, dto: InviteMemberDto) {
     // find invited user
     const user = await this.prisma.user.findUnique({
       where: {
@@ -120,31 +104,5 @@ export class WorkspaceService {
     });
 
     return members;
-  }
-
-  async validateWorkspaceAccess(workspaceId: string, userId: string) {
-    const member = await this.prisma.workspaceMember.findUnique({
-      where: {
-        workspaceId_userId: {
-          workspaceId,
-          userId,
-        },
-      },
-    });
-
-    if (!member)
-      throw new ForbiddenException('You are not a member of this workspace');
-
-    return member;
-  }
-
-  validateWorkspacePermission(
-    memberRole: WorkspaceRole,
-    allowedRoles: WorkspaceRole[],
-  ) {
-    if (!allowedRoles.includes(memberRole))
-      throw new ForbiddenException(
-        'You are not allowed to perform this action',
-      );
   }
 }
