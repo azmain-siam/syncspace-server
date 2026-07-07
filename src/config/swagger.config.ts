@@ -5,9 +5,9 @@
 import { DocumentBuilder } from '@nestjs/swagger';
 
 export const swaggerConfig = new DocumentBuilder()
-  .setTitle('SyncSpace API')
+  .setTitle('server API')
   .setDescription(
-    'Official API documentation for the SyncSpace API.\n\n' +
+    'Official API documentation for the server API.\n\n' +
       'Use this documentation to explore all endpoints, models, authentication methods, and integration guides.',
   )
   .setVersion('1.0')
@@ -48,7 +48,7 @@ export const swaggerCustomOptions = {
       return result;
     },
   },
-  customSiteTitle: 'SyncSpace API Docs',
+  customSiteTitle: 'server API Docs',
   customCss: `
       .swagger-ui .topbar { background-color: #111827 !important; }
       .topbar-wrapper img { content: url('/logo.svg'); width: 140px; }
