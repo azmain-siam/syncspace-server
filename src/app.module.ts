@@ -12,6 +12,7 @@ import { EmailService } from './module/email/email.service';
 import { PrismaModule } from './module/prisma/prisma.module';
 import { UserModule } from './module/user/user.module';
 import { WorkspaceModule } from './module/workspace/workspace.module';
+import { ProjectModule } from './module/project/project.module';
 
 @Module({
   imports: [
@@ -50,6 +51,7 @@ import { WorkspaceModule } from './module/workspace/workspace.module';
     UserModule,
     AuthModule,
     WorkspaceModule,
+    ProjectModule,
   ],
   providers: [
     { provide: APP_INTERCEPTOR, useClass: ResponseInterceptor },
