@@ -344,7 +344,7 @@ export class WorkspaceService {
     tx: Prisma.TransactionClient,
     workspaceId: string,
     actorId: string,
-    action: ActivityAction,
+    action: string,
     description?: string,
     metadata?: Prisma.InputJsonValue,
   ) {
