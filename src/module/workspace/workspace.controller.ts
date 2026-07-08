@@ -22,7 +22,7 @@ import { UpdateWorkspaceSettingsDto } from './dto/update-settings.dto';
 import { WorkspaceRole } from './enums/workspace-role.enum';
 import { WorkspaceService } from './workspace.service';
 
-@Controller('workspace')
+@Controller('workspaces')
 export class WorkspaceController {
   constructor(private readonly workspaceService: WorkspaceService) {}
 
