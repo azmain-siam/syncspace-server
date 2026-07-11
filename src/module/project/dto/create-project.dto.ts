@@ -21,11 +21,6 @@ export class CreateProjectDto {
   @MaxLength(1000)
   description?: string;
 
-  @ApiPropertyOptional({ example: new Date() })
-  @IsOptional()
-  @IsDateString()
-  startDate?: Date;
-
   @ApiPropertyOptional({ example: '2026-07-11T15:45:00Z' })
   @IsOptional()
   @IsDateString()

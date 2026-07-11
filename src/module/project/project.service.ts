@@ -1,6 +1,7 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateProjectDto } from './dto/create-project.dto';
+import { UpdateProjectDto } from './dto/update-project.dto';
 import { ProjectActivityActions } from './enums/project-activity-action.enum';
 import { ProjectStatus } from './enums/project-status.enum';
 
@@ -23,7 +24,7 @@ export class ProjectService {
           color: dto.color,
           priority: dto.priority,
           dueDate: dto.dueDate,
-          startDate: dto.startDate ?? new Date(),
+          startDate: new Date(),
           createdById: currentUserId,
         },
       });
@@ -53,8 +54,47 @@ export class ProjectService {
           not: ProjectStatus.ARCHIVED,
         },
       },
+      orderBy: {
+        createdAt: 'desc',
+      },
     });
 
     return projects;
+  }
+
+  async getProject(workspaceId: string, projectId: string) {
+    const project = await this.prisma.project.findFirst({
+      where: {
+        id: projectId,
+        workspaceId,
+      },
+    });
+    if (!project) throw new NotFoundException('Project not found');
+
+    return project;
+  }
+
+  async updateProject(
+    projectId: string,
+    workspaceId: string,
+    dto: UpdateProjectDto,
+  ) {
+    const project = await this.getProject(workspaceId, projectId);
+
+    const updatedProject = await this.prisma.project.update({
+      where: {
+        id: projectId,
+      },
+      data: {
+        title: dto.title ?? project.title,
+        description: dto.description ?? project.description,
+        color: dto.color ?? project.color,
+        priority: dto.priority ?? project.priority,
+        dueDate: dto.dueDate ?? project.dueDate,
+        status: dto.status ?? project.status,
+      },
+    });
+
+    return updatedProject;
   }
 }
