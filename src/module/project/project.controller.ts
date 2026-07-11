@@ -1,4 +1,4 @@
-import { Body, Controller, Param, Post, UseGuards } from '@nestjs/common';
+import { Body, Controller, Get, Param, Post, UseGuards } from '@nestjs/common';
 import { CurrentUser } from 'src/common/decorators/get-user.decorator';
 import { ResponseMessage } from 'src/common/decorators/response-message.decorator';
 import { WorkspaceRoles } from 'src/common/decorators/workspace-roles.decorator';
@@ -23,5 +23,12 @@ export class ProjectController {
     @CurrentUser() user: User,
   ) {
     return this.projectService.createProject(dto, workspaceId, user.id);
+  }
+
+  @Get()
+  @UseGuards(JwtAuthGuard, WorkspaceRoleGuard)
+  @WorkspaceRoles(WorkspaceRole.ADMIN, WorkspaceRole.OWNER)
+  getWorkspaceProject(@Param('workspaceId') workspaceId: string) {
+    return this.projectService.getWorkspaceProject(workspaceId);
   }
 }

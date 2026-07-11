@@ -2,6 +2,7 @@ import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateProjectDto } from './dto/create-project.dto';
 import { ProjectActivityActions } from './enums/project-activity-action.enum';
+import { ProjectStatus } from './enums/project-status.enum';
 
 @Injectable()
 export class ProjectService {
@@ -21,6 +22,8 @@ export class ProjectService {
           description: dto.description,
           color: dto.color,
           priority: dto.priority,
+          dueDate: dto.dueDate,
+          startDate: dto.startDate ?? new Date(),
           createdById: currentUserId,
         },
       });
@@ -40,5 +43,18 @@ export class ProjectService {
 
       return project;
     });
+  }
+
+  async getWorkspaceProject(workspaceId: string) {
+    const projects = await this.prisma.project.findMany({
+      where: {
+        workspaceId,
+        status: {
+          not: ProjectStatus.ARCHIVED,
+        },
+      },
+    });
+
+    return projects;
   }
 }
