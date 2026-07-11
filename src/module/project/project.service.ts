@@ -87,6 +87,9 @@ export class ProjectService {
       },
       data: {
         title: dto.title ?? project.title,
+        slug: dto.title
+          ? dto.title.toLowerCase().replace(/ /g, '-')
+          : project.slug,
         description: dto.description ?? project.description,
         color: dto.color ?? project.color,
         priority: dto.priority ?? project.priority,
