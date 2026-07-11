@@ -12,7 +12,7 @@ import { InviteMemberDto } from './dto/invite-member.dto';
 import { TransferOwnershipDto } from './dto/transfer-ownership.dto';
 import { UpdateMemberRoleDto } from './dto/update-member-role.dto';
 import { UpdateWorkspaceSettingsDto } from './dto/update-settings.dto';
-import { ActivityAction } from './enums/activity-action.enum';
+import { ActivityAction } from './enums/workspace-activity-action.enum';
 
 @Injectable()
 export class WorkspaceService {

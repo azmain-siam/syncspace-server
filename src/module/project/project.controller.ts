@@ -22,7 +22,6 @@ export class ProjectController {
     @Body() dto: CreateProjectDto,
     @CurrentUser() user: User,
   ) {
-    console.log(workspaceId, dto, user);
-    // return this.projectService.createProject(dto, workspaceId, user.id);
+    return this.projectService.createProject(dto, workspaceId, user.id);
   }
 }
