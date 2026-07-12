@@ -27,9 +27,9 @@ async function bootstrap() {
       whitelist: true, // removes unknown fields
       forbidNonWhitelisted: true, // throws error if extra fields exist
       transform: true, // auto-transform payloads (string → number, etc)
-      transformOptions: {
-        enableImplicitConversion: true,
-      },
+      // transformOptions: {
+      //   enableImplicitConversion: true,
+      // },
     }),
   );
 

@@ -21,6 +21,7 @@ export class AuthService {
     private jwtService: JwtService,
   ) {}
 
+  // Register
   async register(dto: RegisterDto) {
     const existingUser = await this.prisma.user.findUnique({
       where: {
@@ -53,6 +54,7 @@ export class AuthService {
     };
   }
 
+  // Login
   async login(dto: LoginDto) {
     const user = await this.prisma.user.findUnique({
       where: {
@@ -80,6 +82,7 @@ export class AuthService {
     };
   }
 
+  // Refresh access token
   async refresh(userId: string) {
     const user = await this.prisma.user.findUnique({
       where: {
@@ -98,6 +101,7 @@ export class AuthService {
     return tokens;
   }
 
+  // Logout and clear refresh token
   async logout(userId: string) {
     await this.prisma.user.update({
       where: { id: userId },
@@ -107,6 +111,7 @@ export class AuthService {
     return null;
   }
 
+  // Generate access and refresh tokens
   async generateTokens(userId: string, email: string) {
     const payload: JwtPayload = {
       sub: userId,
@@ -129,6 +134,7 @@ export class AuthService {
     };
   }
 
+  // Store hashed refresh token
   private async storeHashedToken(
     userId: string,
     refreshToken: string,
@@ -144,6 +150,7 @@ export class AuthService {
     });
   }
 
+  // Remove password from user
   private sanitizeUser(user: User) {
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
     const { password, ...safeUser } = user;

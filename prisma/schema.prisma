@@ -29,6 +29,7 @@ model User {
   uploadedFiles       Attachment[]
   activities          ActivityLog[]
   workspaceActivities WorkspaceActivity[]
+  projectMembers      ProjectMember[]
 }
 
 model Workspace {
@@ -72,6 +73,9 @@ model WorkspaceMember {
 model WorkspaceActivity {
   id          String  @id @default(uuid())
   workspaceId String
+  projectId   String?
+  taskId      String?
+  boardId     String?
   actorId     String
   action      String
   description String?
@@ -81,28 +85,57 @@ model WorkspaceActivity {
 
   workspace Workspace @relation(fields: [workspaceId], references: [id])
   actor     User      @relation(fields: [actorId], references: [id])
+  project   Project?  @relation(fields: [projectId], references: [id], onDelete: SetNull)
+  task      Task?     @relation(fields: [taskId], references: [id], onDelete: SetNull)
+  board     Board?    @relation(fields: [boardId], references: [id], onDelete: SetNull)
 
   @@index([workspaceId])
+  @@index([projectId])
+  @@index([actorId])
+  @@index([createdAt])
+  @@index([workspaceId, createdAt])
 }
 
 model Project {
-  id          String        @id @default(uuid())
+  id          String          @id @default(uuid())
   workspaceId String
   title       String
+  slug        String?
   description String?
-  status      ProjectStatus @default(ACTIVE)
-  createdBy   String
+  status      ProjectStatus   @default(ACTIVE)
+  priority    ProjectPriority @default(MEDIUM)
+  createdById String
+  startDate   DateTime?
+  dueDate     DateTime?
+  color       String?
 
   createdAt DateTime  @default(now())
   updatedAt DateTime  @updatedAt
   deletedAt DateTime?
 
-  workspace Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
-  creator   User      @relation("ProjectCreator", fields: [createdBy], references: [id])
-  boards    Board[]
+  workspace      Workspace           @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  createdBy      User                @relation("ProjectCreator", fields: [createdById], references: [id])
+  boards         Board[]
+  activities     WorkspaceActivity[]
+  projectMembers ProjectMember[]
 
   @@index([workspaceId])
-  @@index([createdBy])
+  @@index([status])
+  @@index([createdById])
+}
+
+model ProjectMember {
+  id        String            @id @default(uuid())
+  projectId String
+  userId    String
+  role      ProjectMemberRole @default(MEMBER)
+
+  createdAt DateTime @default(now())
+
+  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([projectId, userId])
 }
 
 model Board {
@@ -113,8 +146,9 @@ model Board {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  project Project       @relation(fields: [projectId], references: [id], onDelete: Cascade)
-  columns BoardColumn[]
+  project             Project             @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  columns             BoardColumn[]
+  workspaceActivities WorkspaceActivity[]
 
   @@index([projectId])
 }
@@ -151,12 +185,13 @@ model Task {
   updatedAt DateTime  @updatedAt
   deletedAt DateTime?
 
-  column      BoardColumn   @relation(fields: [columnId], references: [id], onDelete: Cascade)
-  assignee    User?         @relation("TaskAssignee", fields: [assigneeId], references: [id], onDelete: SetNull)
-  creator     User          @relation("TaskCreator", fields: [createdBy], references: [id])
-  comments    Comment[]
-  attachments Attachment[]
-  activities  ActivityLog[]
+  column              BoardColumn         @relation(fields: [columnId], references: [id], onDelete: Cascade)
+  assignee            User?               @relation("TaskAssignee", fields: [assigneeId], references: [id], onDelete: SetNull)
+  creator             User                @relation("TaskCreator", fields: [createdBy], references: [id])
+  comments            Comment[]
+  attachments         Attachment[]
+  activities          ActivityLog[]
+  workspaceActivities WorkspaceActivity[]
 
   @@unique([columnId, order])
   @@index([columnId])
@@ -233,9 +268,25 @@ enum WorkspaceVisibility {
 }
 
 enum ProjectStatus {
+  PLANNING
   ACTIVE
-  ARCHIVED
+  ON_HOLD
   COMPLETED
+  ARCHIVED
+}
+
+enum ProjectPriority {
+  LOW
+  MEDIUM
+  HIGH
+  CRITICAL
+}
+
+enum ProjectMemberRole {
+  MANAGER
+  LEAD
+  MEMBER
+  VIEWER
 }
 
 enum TaskPriority {
