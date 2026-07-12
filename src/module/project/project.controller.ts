@@ -7,6 +7,7 @@ import {
   Post,
   UseGuards,
 } from '@nestjs/common';
+import { ApiOperation } from '@nestjs/swagger';
 import { CurrentUser } from 'src/common/decorators/get-user.decorator';
 import { ResponseMessage } from 'src/common/decorators/response-message.decorator';
 import { WorkspaceRoles } from 'src/common/decorators/workspace-roles.decorator';
@@ -75,5 +76,18 @@ export class ProjectController {
     @Param('workspaceId') workspaceId: string,
   ) {
     return this.projectService.updateProject(projectId, workspaceId, dto);
+  }
+
+  // Delete or Archive project by project owner
+  @Patch(':projectId/archive')
+  @UseGuards(JwtAuthGuard, WorkspaceRoleGuard)
+  @WorkspaceRoles(WorkspaceRole.OWNER)
+  @ResponseMessage('Project archived successfully')
+  @ApiOperation({ summary: 'Archive project' })
+  archiveProject(
+    @Param('projectId') projectId: string,
+    @Param('workspaceId') workspaceId: string,
+  ) {
+    return this.projectService.archiveProject(projectId, workspaceId);
   }
 }

@@ -104,4 +104,20 @@ export class ProjectService {
 
     return updatedProject;
   }
+
+  // Archive project
+  async archiveProject(projectId: string, workspaceId: string) {
+    await this.getProject(workspaceId, projectId);
+
+    const archivedProject = await this.prisma.project.update({
+      where: {
+        id: projectId,
+      },
+      data: {
+        status: ProjectStatus.ARCHIVED,
+      },
+    });
+
+    return archivedProject;
+  }
 }
