@@ -22,7 +22,7 @@ import { UpdateWorkspaceSettingsDto } from './dto/update-settings.dto';
 import { WorkspaceRole } from './enums/workspace-role.enum';
 import { WorkspaceService } from './workspace.service';
 
-@Controller('workspace')
+@Controller('workspaces')
 export class WorkspaceController {
   constructor(private readonly workspaceService: WorkspaceService) {}
 
@@ -118,6 +118,7 @@ export class WorkspaceController {
     return this.workspaceService.getWorkspaceMembers(workspaceId, user.id);
   }
 
+  // Update workspace settings
   @Patch(':workspaceId/settings')
   @UseGuards(JwtAuthGuard, WorkspaceRoleGuard)
   @WorkspaceRoles(WorkspaceRole.OWNER)
