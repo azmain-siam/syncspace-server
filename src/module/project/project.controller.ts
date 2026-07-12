@@ -22,6 +22,7 @@ import { ProjectService } from './project.service';
 export class ProjectController {
   constructor(private readonly projectService: ProjectService) {}
 
+  // Create Project by Workspace Owner or Admin
   @Post()
   @UseGuards(JwtAuthGuard, WorkspaceRoleGuard)
   @WorkspaceRoles(WorkspaceRole.ADMIN, WorkspaceRole.OWNER)
@@ -34,6 +35,7 @@ export class ProjectController {
     return this.projectService.createProject(dto, workspaceId, user.id);
   }
 
+  // Get Projects by Workspace Member
   @Get()
   @UseGuards(JwtAuthGuard, WorkspaceRoleGuard)
   @WorkspaceRoles(
@@ -46,6 +48,7 @@ export class ProjectController {
     return this.projectService.getWorkspaceProject(workspaceId);
   }
 
+  // Get Project by Workspace Member
   @Get(':projectId')
   @UseGuards(JwtAuthGuard, WorkspaceRoleGuard)
   @WorkspaceRoles(
@@ -61,6 +64,7 @@ export class ProjectController {
     return this.projectService.getProject(workspaceId, projectId);
   }
 
+  // Update Project by Workspace Owner or Admin
   @Patch(':projectId')
   @UseGuards(JwtAuthGuard, WorkspaceRoleGuard)
   @WorkspaceRoles(WorkspaceRole.ADMIN, WorkspaceRole.OWNER)

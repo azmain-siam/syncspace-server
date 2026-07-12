@@ -118,6 +118,7 @@ export class WorkspaceController {
     return this.workspaceService.getWorkspaceMembers(workspaceId, user.id);
   }
 
+  // Update workspace settings
   @Patch(':workspaceId/settings')
   @UseGuards(JwtAuthGuard, WorkspaceRoleGuard)
   @WorkspaceRoles(WorkspaceRole.OWNER)

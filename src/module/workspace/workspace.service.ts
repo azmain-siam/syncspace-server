@@ -18,6 +18,7 @@ import { ActivityAction } from './enums/workspace-activity-action.enum';
 export class WorkspaceService {
   constructor(private readonly prisma: PrismaService) {}
 
+  // Create workspace
   async createWorkspace(
     createWorkspaceDto: CreateWorkspaceDto,
     userId: string,
@@ -56,6 +57,7 @@ export class WorkspaceService {
     });
   }
 
+  // Get my workspaces
   async getMyWorkspaces(userId: string) {
     const workspaces = await this.prisma.workspace.findMany({
       where: {
@@ -66,6 +68,7 @@ export class WorkspaceService {
     return workspaces;
   }
 
+  // Invite member
   async inviteMember(
     workspaceId: string,
     dto: InviteMemberDto,
@@ -121,6 +124,7 @@ export class WorkspaceService {
     });
   }
 
+  // Remove member
   async removeWorkspaceMember(
     workspaceId: string,
     memberId: string,
@@ -173,6 +177,7 @@ export class WorkspaceService {
     return null;
   }
 
+  // Update member role
   async updateMemberRole(
     workspaceId: string,
     memberId: string,
@@ -229,6 +234,7 @@ export class WorkspaceService {
     });
   }
 
+  // Transfer ownership
   async transferOwnership(
     workspaceId: string,
     dto: TransferOwnershipDto,
@@ -288,6 +294,7 @@ export class WorkspaceService {
     });
   }
 
+  // Get workspace members
   async getWorkspaceMembers(workspaceId: string, userId: string) {
     const workspace = await this.prisma.workspace.findUnique({
       where: {
@@ -311,6 +318,7 @@ export class WorkspaceService {
     return members;
   }
 
+  // Update workspace settings
   async updateWorkspaceSettings(
     workspaceId: string,
     dto: UpdateWorkspaceSettingsDto,
@@ -340,6 +348,7 @@ export class WorkspaceService {
     return updatedWorkspace;
   }
 
+  // Create activity log
   async createActivityLog(
     tx: Prisma.TransactionClient,
     workspaceId: string,

@@ -9,6 +9,7 @@ import { ProjectStatus } from './enums/project-status.enum';
 export class ProjectService {
   constructor(private readonly prisma: PrismaService) {}
 
+  // Create project
   async createProject(
     dto: CreateProjectDto,
     workspaceId: string,
@@ -46,6 +47,7 @@ export class ProjectService {
     });
   }
 
+  // Get workspace projects
   async getWorkspaceProject(workspaceId: string) {
     const projects = await this.prisma.project.findMany({
       where: {
@@ -62,6 +64,7 @@ export class ProjectService {
     return projects;
   }
 
+  // Get project
   async getProject(workspaceId: string, projectId: string) {
     const project = await this.prisma.project.findFirst({
       where: {
@@ -74,6 +77,7 @@ export class ProjectService {
     return project;
   }
 
+  // Update project
   async updateProject(
     projectId: string,
     workspaceId: string,
