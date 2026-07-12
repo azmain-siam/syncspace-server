@@ -74,8 +74,9 @@ export class ProjectController {
     @Body() dto: UpdateProjectDto,
     @Param('projectId') projectId: string,
     @Param('workspaceId') workspaceId: string,
+    @CurrentUser() user: User,
   ) {
-    return this.projectService.updateProject(projectId, workspaceId, dto);
+    return this.projectService.updateProject(projectId, workspaceId, dto, user);
   }
 
   // Delete or Archive project by project owner
@@ -87,7 +88,8 @@ export class ProjectController {
   archiveProject(
     @Param('projectId') projectId: string,
     @Param('workspaceId') workspaceId: string,
+    @CurrentUser() user: User,
   ) {
-    return this.projectService.archiveProject(projectId, workspaceId);
+    return this.projectService.archiveProject(projectId, workspaceId, user);
   }
 }
