@@ -1,4 +1,5 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
+import { User } from 'src/common/interfaces/user.interface';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateProjectDto } from './dto/create-project.dto';
 import { UpdateProjectDto } from './dto/update-project.dto';
@@ -82,42 +83,77 @@ export class ProjectService {
     projectId: string,
     workspaceId: string,
     dto: UpdateProjectDto,
+    currentUser: User,
   ) {
     const project = await this.getProject(workspaceId, projectId);
 
-    const updatedProject = await this.prisma.project.update({
-      where: {
-        id: projectId,
-      },
-      data: {
-        title: dto.title ?? project.title,
-        slug: dto.title
-          ? dto.title.toLowerCase().replace(/ /g, '-')
-          : project.slug,
-        description: dto.description ?? project.description,
-        color: dto.color ?? project.color,
-        priority: dto.priority ?? project.priority,
-        dueDate: dto.dueDate ?? project.dueDate,
-        status: dto.status ?? project.status,
-      },
-    });
+    return await this.prisma.$transaction(async (tx) => {
+      const updatedProject = await tx.project.update({
+        where: {
+          id: projectId,
+        },
+        data: {
+          title: dto.title ?? project.title,
+          slug: dto.title
+            ? dto.title.toLowerCase().replace(/ /g, '-')
+            : project.slug,
+          description: dto.description ?? project.description,
+          color: dto.color ?? project.color,
+          priority: dto.priority ?? project.priority,
+          dueDate: dto.dueDate ?? project.dueDate,
+          status: dto.status ?? project.status,
+        },
+      });
 
-    return updatedProject;
+      await tx.workspaceActivity.create({
+        data: {
+          workspaceId,
+          actorId: currentUser.id,
+          projectId: updatedProject.id,
+          action: ProjectActivityActions.PROJECT_UPDATED,
+          description: `${currentUser.name} Updated project ${updatedProject.title}`,
+          metadata: {
+            projectId: updatedProject.id,
+          },
+        },
+      });
+
+      return updatedProject;
+    });
   }
 
   // Archive project
-  async archiveProject(projectId: string, workspaceId: string) {
+  async archiveProject(
+    projectId: string,
+    workspaceId: string,
+    currentUser: User,
+  ) {
     await this.getProject(workspaceId, projectId);
 
-    const archivedProject = await this.prisma.project.update({
-      where: {
-        id: projectId,
-      },
-      data: {
-        status: ProjectStatus.ARCHIVED,
-      },
-    });
+    return await this.prisma.$transaction(async (tx) => {
+      const archivedProject = await tx.project.update({
+        where: {
+          id: projectId,
+        },
+        data: {
+          status: ProjectStatus.ARCHIVED,
+        },
+      });
 
-    return archivedProject;
+      await tx.workspaceActivity.create({
+        data: {
+          workspaceId,
+          actorId: currentUser.id,
+          projectId: archivedProject.id,
+          action: ProjectActivityActions.PROJECT_ARCHIVED,
+          description: `${currentUser.name} Archived project ${archivedProject.title}`,
+          metadata: {
+            projectId: archivedProject.id,
+          },
+        },
+      });
+
+      return archivedProject;
+    });
   }
 }

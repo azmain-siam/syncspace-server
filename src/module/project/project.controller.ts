@@ -28,6 +28,7 @@ export class ProjectController {
   @UseGuards(JwtAuthGuard, WorkspaceRoleGuard)
   @WorkspaceRoles(WorkspaceRole.ADMIN, WorkspaceRole.OWNER)
   @ResponseMessage('Project created successfully')
+  @ApiOperation({ summary: 'Create project' })
   createProject(
     @Param('workspaceId') workspaceId: string,
     @Body() dto: CreateProjectDto,
@@ -45,6 +46,7 @@ export class ProjectController {
     WorkspaceRole.MEMBER,
   )
   @ResponseMessage('Projects fetched successfully')
+  @ApiOperation({ summary: 'Get projects by workspace member' })
   getWorkspaceProject(@Param('workspaceId') workspaceId: string) {
     return this.projectService.getWorkspaceProject(workspaceId);
   }
@@ -58,6 +60,7 @@ export class ProjectController {
     WorkspaceRole.MEMBER,
   )
   @ResponseMessage('Project fetched successfully')
+  @ApiOperation({ summary: 'Get project by workspace member' })
   getProject(
     @Param('workspaceId') workspaceId: string,
     @Param('projectId') projectId: string,
@@ -70,12 +73,14 @@ export class ProjectController {
   @UseGuards(JwtAuthGuard, WorkspaceRoleGuard)
   @WorkspaceRoles(WorkspaceRole.ADMIN, WorkspaceRole.OWNER)
   @ResponseMessage('Project updated successfully')
+  @ApiOperation({ summary: 'Update project by workspace owner or admin' })
   updateProject(
     @Body() dto: UpdateProjectDto,
     @Param('projectId') projectId: string,
     @Param('workspaceId') workspaceId: string,
+    @CurrentUser() user: User,
   ) {
-    return this.projectService.updateProject(projectId, workspaceId, dto);
+    return this.projectService.updateProject(projectId, workspaceId, dto, user);
   }
 
   // Delete or Archive project by project owner
@@ -83,11 +88,12 @@ export class ProjectController {
   @UseGuards(JwtAuthGuard, WorkspaceRoleGuard)
   @WorkspaceRoles(WorkspaceRole.OWNER)
   @ResponseMessage('Project archived successfully')
-  @ApiOperation({ summary: 'Archive project' })
+  @ApiOperation({ summary: 'Archive project by project owner' })
   archiveProject(
     @Param('projectId') projectId: string,
     @Param('workspaceId') workspaceId: string,
+    @CurrentUser() user: User,
   ) {
-    return this.projectService.archiveProject(projectId, workspaceId);
+    return this.projectService.archiveProject(projectId, workspaceId, user);
   }
 }

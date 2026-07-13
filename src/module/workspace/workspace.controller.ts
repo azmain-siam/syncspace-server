@@ -8,6 +8,7 @@ import {
   Post,
   UseGuards,
 } from '@nestjs/common';
+import { ApiOperation } from '@nestjs/swagger';
 import { CurrentUser } from 'src/common/decorators/get-user.decorator';
 import { ResponseMessage } from 'src/common/decorators/response-message.decorator';
 import { WorkspaceRoles } from 'src/common/decorators/workspace-roles.decorator';
@@ -30,6 +31,7 @@ export class WorkspaceController {
   @Post()
   @UseGuards(JwtAuthGuard)
   @ResponseMessage('Workspace created successfully')
+  @ApiOperation({ summary: 'Create workspace' })
   createWorkspace(
     @Body() createWorkspaceDto: CreateWorkspaceDto,
     @CurrentUser() user: User,
@@ -41,6 +43,7 @@ export class WorkspaceController {
   @Get()
   @UseGuards(JwtAuthGuard)
   @ResponseMessage('Workspaces fetched successfully')
+  @ApiOperation({ summary: 'Get my workspaces' })
   getMyWorkspaces(@CurrentUser() user: User) {
     return this.workspaceService.getMyWorkspaces(user.id);
   }
@@ -50,6 +53,7 @@ export class WorkspaceController {
   @UseGuards(JwtAuthGuard, WorkspaceRoleGuard)
   @WorkspaceRoles(WorkspaceRole.OWNER, WorkspaceRole.ADMIN)
   @ResponseMessage('Member invited successfully')
+  @ApiOperation({ summary: 'Invite member to workspace' })
   inviteMember(
     @Param('workspaceId') workspaceId: string,
     @Body() dto: InviteMemberDto,
@@ -63,6 +67,9 @@ export class WorkspaceController {
   @UseGuards(JwtAuthGuard, WorkspaceRoleGuard)
   @WorkspaceRoles(WorkspaceRole.OWNER, WorkspaceRole.ADMIN)
   @ResponseMessage('Member removed successfully')
+  @ApiOperation({
+    summary: 'Remove member from workspace by workspace owner or admin',
+  })
   removeMember(
     @Param('workspaceId') workspaceId: string,
     @Param('userId') userId: string,
@@ -80,6 +87,7 @@ export class WorkspaceController {
   @UseGuards(JwtAuthGuard, WorkspaceRoleGuard)
   @WorkspaceRoles(WorkspaceRole.OWNER, WorkspaceRole.ADMIN)
   @ResponseMessage('Member role updated successfully')
+  @ApiOperation({ summary: 'Update member role by workspace owner or admin' })
   updateMemberRole(
     @Param('workspaceId') workspaceId: string,
     @Param('memberId') memberId: string,
@@ -99,6 +107,7 @@ export class WorkspaceController {
   @UseGuards(JwtAuthGuard, WorkspaceRoleGuard)
   @WorkspaceRoles(WorkspaceRole.OWNER)
   @ResponseMessage('Ownership transferred successfully')
+  @ApiOperation({ summary: 'Transfer ownership by workspace owner' })
   transferOwnership(
     @Param('workspaceId') workspaceId: string,
     @Body() dto: TransferOwnershipDto,
@@ -111,6 +120,7 @@ export class WorkspaceController {
   @Get(':workspaceId/members')
   @UseGuards(JwtAuthGuard)
   @ResponseMessage('Members fetched successfully')
+  @ApiOperation({ summary: 'Get workspace members' })
   getWorkspaceMembers(
     @Param('workspaceId') workspaceId: string,
     @CurrentUser() user: User,
@@ -123,6 +133,7 @@ export class WorkspaceController {
   @UseGuards(JwtAuthGuard, WorkspaceRoleGuard)
   @WorkspaceRoles(WorkspaceRole.OWNER)
   @ResponseMessage('Settings updated successfully')
+  @ApiOperation({ summary: 'Update workspace settings by workspace owner' })
   updateWorkspaceSettings(
     @Param('workspaceId') workspaceId: string,
     @Body() dto: UpdateWorkspaceSettingsDto,
