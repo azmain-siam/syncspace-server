@@ -48,7 +48,7 @@ export const swaggerCustomOptions = {
       return result;
     },
   },
-  customSiteTitle: 'SyncSpace API Docs',
+  customSiteTitle: 'SyncSpace | API Docs',
   customCss: `
       .swagger-ui .topbar { background-color: #111827 !important; }
       .topbar-wrapper img { content: url('/logo.svg'); width: 140px; }
