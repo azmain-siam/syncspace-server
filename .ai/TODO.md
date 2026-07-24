@@ -102,17 +102,17 @@ Legend:
 
 ## Board
 
-- [ ] Create Board
-- [ ] Update Board
-- [ ] Delete Board
-- [ ] Reorder Boards
+- [x] Create Board
+- [x] Update Board
+- [x] Delete Board
+- [x] Reorder Boards
 
 ## Columns
 
-- [ ] Create Column
-- [ ] Rename Column
-- [ ] Delete Column
-- [ ] Reorder Columns
+- [x] Create Column
+- [x] Rename Column
+- [x] Delete Column
+- [x] Reorder Columns
 
 ---
 
@@ -157,8 +157,8 @@ Legend:
 ## Activity
 
 - [x] Workspace Activity Logging (Write on Create/Update via DB transaction)
-- [ ] Workspace Activity Feed API (`GET /workspaces/:workspaceId/activities`)
-- [ ] Project Activity Logging
+- [x] Workspace Activity Feed API (`GET /workspaces/:workspaceId/activities`)
+- [x] Project Activity Logging
 - [ ] Task Activity Logging
 
 ---
@@ -240,20 +240,20 @@ Legend:
 2. [x] **REST Route Correction**: Update project controller prefix to `/workspaces/:workspaceId/projects`.
 3. [x] **DTO Email Validation**: Add `@IsEmail()` to `RegisterDto` & `LoginDto`.
 4. [x] **Centralize Activity Logging**: Create global `ActivityModule`/`ActivityService` and `GET /workspaces/:workspaceId/activities`.
-5. [ ] **Phase 6 — Board & Column API Modules**: Implement Board & BoardColumn CRUD services and controllers.
+5. [x] **Phase 6 — Board & Column API Modules**: Implement Board & BoardColumn CRUD services and controllers.
+6. [ ] **Phase 7 — Task API Module**: Implement Task CRUD, Move Task across columns, Assign Member, Priority & Status updates.
 
 ---
 
 # Next Feature (What to do next)
 
 ```
-Phase 6 — Board & Column API Modules (Boards & Columns CRUD)
+Phase 7 — Task API Module (Task Lifecycle & Management)
 
-Step 1: Create `src/module/board` with `BoardService`, `BoardController`, `dto` (CreateBoardDto, UpdateBoardDto), and `board.module.ts`.
-Step 2: Implement Board CRUD: POST/GET/PATCH/DELETE endpoints under `/projects/:projectId/boards`.
-Step 3: Create `src/module/column` with `ColumnService`, `ColumnController`, `dto` (CreateColumnDto, UpdateColumnDto, ReorderColumnsDto), and `column.module.ts`.
-Step 4: Implement Column CRUD + reordering under `/boards/:boardId/columns`.
-Step 5: Emit activity events via ActivityService for Board & Column mutations.
+Step 1: Create `src/module/task` with `TaskService`, `TaskController`, `dto` (CreateTaskDto, UpdateTaskDto, MoveTaskDto, TaskQueryDto), and `task.module.ts`.
+Step 2: Implement Task CRUD: POST/GET/PATCH/DELETE endpoints under `/workspaces/:workspaceId/projects/:projectId/boards/:boardId/columns/:columnId/tasks` or `/tasks`.
+Step 3: Implement Move Task across columns (calculates target order, handles order shifts).
+Step 4: Emit activity events (`TASK_CREATED`, `TASK_UPDATED`, `TASK_MOVED`, `TASK_DELETED`, `TASK_ASSIGNED`) via ActivityService.
 ```
 
 ---

@@ -14,6 +14,8 @@ import { UserModule } from './module/user/user.module';
 import { WorkspaceModule } from './module/workspace/workspace.module';
 import { ProjectModule } from './module/project/project.module';
 import { ActivityModule } from './module/activity/activity.module';
+import { BoardModule } from './module/board/board.module';
+import { ColumnModule } from './module/column/column.module';
 
 @Module({
   imports: [
@@ -54,6 +56,8 @@ import { ActivityModule } from './module/activity/activity.module';
     WorkspaceModule,
     ProjectModule,
     ActivityModule,
+    BoardModule,
+    ColumnModule,
   ],
   providers: [
     { provide: APP_INTERCEPTOR, useClass: ResponseInterceptor },
