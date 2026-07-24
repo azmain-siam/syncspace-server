@@ -4,6 +4,7 @@ import { ActivityService } from '../activity/activity.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateBoardDto } from './dto/create-board.dto';
 import { UpdateBoardDto } from './dto/update-board.dto';
+import { BoardActivityAction } from './enums/board-activity.enum';
 
 const DEFAULT_COLUMNS = ['Todo', 'In Progress', 'Review', 'Done'];
 
@@ -67,7 +68,7 @@ export class BoardService {
         actorId: currentUser.id,
         projectId,
         boardId: board.id,
-        action: 'BOARD_CREATED',
+        action: BoardActivityAction.BOARD_CREATED,
         description: `${currentUser.name} created board ${board.title}`,
         metadata: { boardId: board.id, title: board.title },
       });
@@ -157,7 +158,7 @@ export class BoardService {
         actorId: currentUser.id,
         projectId,
         boardId: updatedBoard.id,
-        action: 'BOARD_UPDATED',
+        action: BoardActivityAction.BOARD_UPDATED,
         description: `${currentUser.name} updated board ${updatedBoard.title}`,
         metadata: { boardId: updatedBoard.id, title: updatedBoard.title },
       });
@@ -185,7 +186,7 @@ export class BoardService {
         actorId: currentUser.id,
         projectId,
         boardId,
-        action: 'BOARD_DELETED',
+        action: BoardActivityAction.BOARD_DELETED,
         description: `${currentUser.name} deleted board ${board.title}`,
         metadata: { boardId, title: board.title },
       });

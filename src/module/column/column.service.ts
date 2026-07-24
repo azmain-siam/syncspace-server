@@ -3,13 +3,14 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
+import { Prisma } from '@prisma/client';
 import type { User } from 'src/common/interfaces/user.interface';
 import { ActivityService } from '../activity/activity.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateColumnDto } from './dto/create-column.dto';
 import { ReorderColumnsDto } from './dto/reorder-columns.dto';
 import { UpdateColumnDto } from './dto/update-column.dto';
-import { Prisma } from '@prisma/client';
+import { ColumnActivityAction } from './enums/column-activity.enum';
 
 @Injectable()
 export class ColumnService {
@@ -77,7 +78,7 @@ export class ColumnService {
         actorId: currentUser.id,
         projectId,
         boardId,
-        action: 'COLUMN_CREATED',
+        action: ColumnActivityAction.COLUMN_CREATED,
         description: `${currentUser.name} created column ${column.title}`,
         metadata: {
           columnId: column.id,
@@ -156,7 +157,7 @@ export class ColumnService {
         actorId: currentUser.id,
         projectId,
         boardId,
-        action: 'COLUMN_UPDATED',
+        action: ColumnActivityAction.COLUMN_UPDATED,
         description: `${currentUser.name} updated column ${updatedColumn.title}`,
         metadata: { columnId, title: updatedColumn.title },
       });
@@ -190,7 +191,7 @@ export class ColumnService {
         actorId: currentUser.id,
         projectId,
         boardId,
-        action: 'COLUMN_DELETED',
+        action: ColumnActivityAction.COLUMN_DELETED,
         description: `${currentUser.name} deleted column ${column.title}`,
         metadata: { columnId, title: column.title },
       });
@@ -245,7 +246,7 @@ export class ColumnService {
         actorId: currentUser.id,
         projectId,
         boardId,
-        action: 'COLUMN_REORDERED',
+        action: ColumnActivityAction.COLUMN_REORDERED,
         description: `${currentUser.name} reordered board columns`,
         metadata: {
           boardId,
