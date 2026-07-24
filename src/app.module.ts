@@ -13,6 +13,7 @@ import { PrismaModule } from './module/prisma/prisma.module';
 import { UserModule } from './module/user/user.module';
 import { WorkspaceModule } from './module/workspace/workspace.module';
 import { ProjectModule } from './module/project/project.module';
+import { ActivityModule } from './module/activity/activity.module';
 
 @Module({
   imports: [
@@ -52,6 +53,7 @@ import { ProjectModule } from './module/project/project.module';
     AuthModule,
     WorkspaceModule,
     ProjectModule,
+    ActivityModule,
   ],
   providers: [
     { provide: APP_INTERCEPTOR, useClass: ResponseInterceptor },

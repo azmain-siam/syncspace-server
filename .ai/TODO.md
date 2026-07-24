@@ -14,13 +14,12 @@ Always continue from the current project state.
 
 # Development Status
 
-Legend
-
+Legend:
 - ✅ Completed
-- 🚧 In Progress
+- 🚧 In Progress / Partial
 - ⏳ Planned
 - ❌ Blocked
-- 🔄 Refactor Later
+- 🔄 Refactor / Fix Required
 
 ---
 
@@ -30,20 +29,14 @@ Legend
 
 - [ ] Docker
 - [ ] Docker Compose
-- [ ] Environment Configuration
-- [ ] Prisma
-- [ ] PostgreSQL
-- [ ] Swagger
-- [ ] Validation Pipe
-- [ ] Global Exception Filter
-- [ ] Logger
-- [ ] Config Module
-
-Notes
-
-```
-Write implementation notes here.
-```
+- [x] Environment Configuration
+- [x] Prisma
+- [x] PostgreSQL
+- [x] Swagger
+- [x] Validation Pipe
+- [x] Global Exception Filter
+- [ ] Logger (pino installed but commented out, `console.log` in `main.ts` — 🔄)
+- [x] Config Module
 
 ---
 
@@ -51,19 +44,13 @@ Write implementation notes here.
 
 ## Auth
 
-- [ ] Register
-- [ ] Login
-- [ ] Refresh Token
-- [ ] Logout
-- [ ] JWT Guard
-- [ ] Password Hashing
-- [ ] Current User Decorator
-
-Notes
-
-```
-
-```
+- [x] Register
+- [x] Login
+- [x] Refresh Token
+- [x] Logout
+- [x] JWT Guard
+- [x] Password Hashing
+- [x] Current User Decorator
 
 ---
 
@@ -71,16 +58,10 @@ Notes
 
 ## User
 
-- [ ] Profile
+- [x] Profile (`GET /api/v1/user/me`)
 - [ ] Update Profile
 - [ ] Avatar Upload
 - [ ] Change Password
-
-Notes
-
-```
-
-```
 
 ---
 
@@ -88,33 +69,20 @@ Notes
 
 ## Workspace
 
-- [ ] Create Workspace
-- [ ] Update Workspace
+- [x] Create Workspace
+- [x] Update Workspace Settings
 - [ ] Delete Workspace
-- [ ] Transfer Ownership
-- [ ] Workspace Settings
+- [x] Transfer Ownership
+- [x] Workspace Settings (`PATCH /workspaces/:workspaceId/settings`)
 
-Notes
+## Workspace Members
 
-```
-
-```
-
----
-
-# Workspace Members
-
-- [ ] Invite Member
-- [ ] Accept Invitation
+- [x] Invite Member (Direct creation)
+- [ ] Accept Invitation (Token-based flow)
 - [ ] Reject Invitation
-- [ ] Remove Member
-- [ ] Change Role
-
-Notes
-
-```
-
-```
+- [x] Remove Member
+- [x] Change Role
+- [ ] Get User Workspaces (Includes membership workspaces — 🔄 currently only returns owned)
 
 ---
 
@@ -122,20 +90,15 @@ Notes
 
 ## Project
 
-- [ ] Create Project
-- [ ] Update Project
-- [ ] Archive Project
+- [x] Create Project
+- [x] Update Project
+- [x] Archive Project
 - [ ] Delete Project
-
-Notes
-
-```
-
-```
+- [ ] Project Route Pluralization (`/projects` instead of `/project` — 🔄)
 
 ---
 
-# Phase 6 — Boards
+# Phase 6 — Boards & Columns
 
 ## Board
 
@@ -144,20 +107,12 @@ Notes
 - [ ] Delete Board
 - [ ] Reorder Boards
 
----
-
-# Columns
+## Columns
 
 - [ ] Create Column
 - [ ] Rename Column
 - [ ] Delete Column
 - [ ] Reorder Columns
-
-Notes
-
-```
-
-```
 
 ---
 
@@ -175,12 +130,6 @@ Notes
 - [ ] Labels
 - [ ] Archive Task
 
-Notes
-
-```
-
-```
-
 ---
 
 # Phase 8 — Comments
@@ -190,12 +139,6 @@ Notes
 - [ ] Create
 - [ ] Update
 - [ ] Delete
-
-Notes
-
-```
-
-```
 
 ---
 
@@ -207,27 +150,16 @@ Notes
 - [ ] Delete
 - [ ] Preview
 
-Notes
-
-```
-
-```
-
 ---
 
 # Phase 10 — Activity
 
 ## Activity
 
-- [ ] Workspace Activity
-- [ ] Project Activity
-- [ ] Task Activity
-
-Notes
-
-```
-
-```
+- [x] Workspace Activity Logging (Write on Create/Update via DB transaction)
+- [ ] Workspace Activity Feed API (`GET /workspaces/:workspaceId/activities`)
+- [ ] Project Activity Logging
+- [ ] Task Activity Logging
 
 ---
 
@@ -241,12 +173,6 @@ Notes
 - [ ] Workspace Invitation
 - [ ] Project Invitation
 
-Notes
-
-```
-
-```
-
 ---
 
 # Phase 12 — Realtime
@@ -259,12 +185,6 @@ Notes
 - [ ] Live Comments
 - [ ] Notifications
 
-Notes
-
-```
-
-```
-
 ---
 
 # Phase 13 — Search
@@ -274,12 +194,6 @@ Notes
 - [ ] Workspace Search
 - [ ] Project Search
 - [ ] Task Search
-
-Notes
-
-```
-
-```
 
 ---
 
@@ -292,118 +206,54 @@ Notes
 - [ ] Productivity
 - [ ] Member Activity
 
-Notes
-
-```
-
-```
-
 ---
 
-# Future Features
+# Technical Debt & Refactor Queue
 
-## Chat
-
-- [ ] Direct Message
-- [ ] Workspace Chat
-- [ ] Typing Indicator
-- [ ] Read Receipts
-
----
-
-## Calendar
-
-- [ ] Calendar View
-- [ ] Upcoming Tasks
-- [ ] Reminders
-
----
-
-## AI
-
-- [ ] AI Task Summary
-- [ ] AI Project Insights
-- [ ] AI Productivity Report
-
----
-
-## Automation
-
-- [ ] Workflow Rules
-- [ ] Auto Assignment
-- [ ] Due Date Automation
-
----
-
-# Technical Debt
-
-Use this section for improvements that should be implemented later.
-
-Example
-
-- Replace duplicated query
-- Improve Prisma transaction
-- Optimize search query
-- Reduce service complexity
+- [x] **Workspaces Query Fix**: Update `getMyWorkspaces()` in `WorkspaceService` to query `WorkspaceMember` so users see workspaces where they are members (not just owners).
+- [x] **Workspace Member Access Fix**: Update `getWorkspaceMembers()` permissions so non-owner workspace members can also view member lists.
+- [x] **REST Pluralization**: Rename `@Controller('workspaces/:workspaceId/project')` to `@Controller('workspaces/:workspaceId/projects')`.
+- [x] **DTO Validation Hardening**: Update `LoginDto` and `RegisterDto` to validate email using `@IsEmail()` instead of `@IsString()`.
+- [x] **Centralized Activity Service**: Extract `createActivityLog()` into a shared `ActivityService` so `ProjectService` and future modules reuse a single service.
+- [ ] **Consolidate Activity Models**: Remove unused `ActivityLog` model or align it with `WorkspaceActivity`.
+- [ ] **Clean Dead Code**: Remove unused `Role` enum, `RolesGuard`, `AppException`, `RefreshTokenDto`, `UpdateWorkspaceDto`, `TrimPipe`.
+- [ ] **Email Module**: Wrap `EmailService` inside an `EmailModule` export.
+- [ ] **Logger Initialization**: Enable Pino logger in `app.module.ts` and `main.ts`, replacing `console.log`.
 
 ---
 
 # Known Bugs
 
-Document existing bugs.
+## Bug 1: Non-owner members cannot view their workspaces
+- **Description**: `getMyWorkspaces()` filters strictly by `ownerId = userId`. Members with role `ADMIN` or `MEMBER` receive empty workspace lists.
+- **Status**: ✅ Fixed
 
-Format
-
-## Bug
-
-Description
-
-Status
-
-Priority
-
-Owner
-
----
-
-# Refactor Queue
-
-Features that should be improved later.
-
-Never refactor automatically.
-
-Examples
-
-- Workspace Service
-- Notification Service
-- Socket Gateway
+## Bug 2: Singular `/project` Route Endpoint
+- **Description**: Project endpoints use `/workspaces/:workspaceId/project` instead of plural `/projects`.
+- **Status**: ✅ Fixed
 
 ---
 
 # Current Sprint
 
-The AI Agent should prioritize only these tasks.
-
-Example
-
-1.
-
-2.
-
-3.
+1. [x] **Fix Workspaces Membership Query (`getMyWorkspaces`)**: Allow non-owners to list workspaces they belong to.
+2. [x] **REST Route Correction**: Update project controller prefix to `/workspaces/:workspaceId/projects`.
+3. [x] **DTO Email Validation**: Add `@IsEmail()` to `RegisterDto` & `LoginDto`.
+4. [x] **Centralize Activity Logging**: Create global `ActivityModule`/`ActivityService` and `GET /workspaces/:workspaceId/activities`.
+5. [ ] **Phase 6 — Board & Column API Modules**: Implement Board & BoardColumn CRUD services and controllers.
 
 ---
 
-# Next Feature
-
-This section should always contain only ONE feature.
-
-The AI Agent should implement this feature first unless instructed otherwise.
-
-Example
+# Next Feature (What to do next)
 
 ```
-Implement task labels with filtering support.
+Phase 6 — Board & Column API Modules (Boards & Columns CRUD)
+
+Step 1: Create `src/module/board` with `BoardService`, `BoardController`, `dto` (CreateBoardDto, UpdateBoardDto), and `board.module.ts`.
+Step 2: Implement Board CRUD: POST/GET/PATCH/DELETE endpoints under `/projects/:projectId/boards`.
+Step 3: Create `src/module/column` with `ColumnService`, `ColumnController`, `dto` (CreateColumnDto, UpdateColumnDto, ReorderColumnsDto), and `column.module.ts`.
+Step 4: Implement Column CRUD + reordering under `/boards/:boardId/columns`.
+Step 5: Emit activity events via ActivityService for Board & Column mutations.
 ```
 
 ---
@@ -413,9 +263,9 @@ Implement task labels with filtering support.
 Before implementing any feature:
 
 1. Read this file.
-2. Skip completed features.
+2. Skip completed features (`[x]`).
 3. Continue from current progress.
-4. Reuse existing code.
+4. Reuse existing code (`PrismaService`, `JwtAuthGuard`, `WorkspaceRoleGuard`, `@CurrentUser()`).
 5. Update this file after implementation.
 6. Never mark a feature complete unless it is fully implemented.
 7. If a feature is partially complete, mark it as 🚧 and explain why.

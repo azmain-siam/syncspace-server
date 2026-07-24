@@ -7,6 +7,7 @@ import {
 import { Prisma, WorkspaceRole } from '@prisma/client';
 import { User } from 'src/common/interfaces/user.interface';
 import { PrismaService } from '../prisma/prisma.service';
+import { ActivityService } from '../activity/activity.service';
 import { CreateWorkspaceDto } from './dto/create-workspace.dto';
 import { InviteMemberDto } from './dto/invite-member.dto';
 import { TransferOwnershipDto } from './dto/transfer-ownership.dto';
@@ -16,7 +17,10 @@ import { ActivityAction } from './enums/workspace-activity-action.enum';
 
 @Injectable()
 export class WorkspaceService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly activityService: ActivityService,
+  ) {}
 
   // Create workspace
   async createWorkspace(
@@ -61,7 +65,12 @@ export class WorkspaceService {
   async getMyWorkspaces(userId: string) {
     const workspaces = await this.prisma.workspace.findMany({
       where: {
-        ownerId: userId,
+        deletedAt: null,
+        members: {
+          some: {
+            userId,
+          },
+        },
       },
     });
 
@@ -296,14 +305,16 @@ export class WorkspaceService {
 
   // Get workspace members
   async getWorkspaceMembers(workspaceId: string, userId: string) {
-    const workspace = await this.prisma.workspace.findUnique({
+    const member = await this.prisma.workspaceMember.findUnique({
       where: {
-        id: workspaceId,
-        ownerId: userId,
+        workspaceId_userId: {
+          workspaceId,
+          userId,
+        },
       },
     });
 
-    if (!workspace) {
+    if (!member) {
       throw new ForbiddenException('You are not a member of this workspace');
     }
     const members = await this.prisma.workspaceMember.findMany({
@@ -311,7 +322,15 @@ export class WorkspaceService {
         workspaceId,
       },
       include: {
-        user: true,
+        user: {
+          select: {
+            id: true,
+            name: true,
+            email: true,
+            phone: true,
+            avatar: true,
+          },
+        },
       },
     });
 
@@ -357,14 +376,12 @@ export class WorkspaceService {
     description?: string,
     metadata?: Prisma.InputJsonValue,
   ) {
-    return tx.workspaceActivity.create({
-      data: {
-        workspaceId,
-        actorId,
-        action,
-        description,
-        metadata,
-      },
+    return this.activityService.createActivityLog(tx, {
+      workspaceId,
+      actorId,
+      action,
+      description,
+      metadata,
     });
   }
 }

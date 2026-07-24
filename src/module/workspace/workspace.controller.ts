@@ -118,7 +118,12 @@ export class WorkspaceController {
 
   // Get workspace members
   @Get(':workspaceId/members')
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(JwtAuthGuard, WorkspaceRoleGuard)
+  @WorkspaceRoles(
+    WorkspaceRole.OWNER,
+    WorkspaceRole.ADMIN,
+    WorkspaceRole.MEMBER,
+  )
   @ResponseMessage('Members fetched successfully')
   @ApiOperation({ summary: 'Get workspace members' })
   getWorkspaceMembers(

@@ -1,6 +1,7 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { User } from 'src/common/interfaces/user.interface';
 import { PrismaService } from '../prisma/prisma.service';
+import { ActivityService } from '../activity/activity.service';
 import { CreateProjectDto } from './dto/create-project.dto';
 import { UpdateProjectDto } from './dto/update-project.dto';
 import { ProjectActivityActions } from './enums/project-activity-action.enum';
@@ -8,7 +9,10 @@ import { ProjectStatus } from './enums/project-status.enum';
 
 @Injectable()
 export class ProjectService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly activityService: ActivityService,
+  ) {}
 
   // Create project
   async createProject(
@@ -31,16 +35,14 @@ export class ProjectService {
         },
       });
 
-      await tx.workspaceActivity.create({
-        data: {
-          workspaceId,
-          actorId: currentUserId,
+      await this.activityService.createActivityLog(tx, {
+        workspaceId,
+        actorId: currentUserId,
+        projectId: project.id,
+        action: ProjectActivityActions.PROJECT_CREATED,
+        description: `Created project ${project.title}`,
+        metadata: {
           projectId: project.id,
-          action: ProjectActivityActions.PROJECT_CREATED,
-          description: `Created project ${project.title}`,
-          metadata: {
-            projectId: project.id,
-          },
         },
       });
 
@@ -105,16 +107,14 @@ export class ProjectService {
         },
       });
 
-      await tx.workspaceActivity.create({
-        data: {
-          workspaceId,
-          actorId: currentUser.id,
+      await this.activityService.createActivityLog(tx, {
+        workspaceId,
+        actorId: currentUser.id,
+        projectId: updatedProject.id,
+        action: ProjectActivityActions.PROJECT_UPDATED,
+        description: `${currentUser.name} Updated project ${updatedProject.title}`,
+        metadata: {
           projectId: updatedProject.id,
-          action: ProjectActivityActions.PROJECT_UPDATED,
-          description: `${currentUser.name} Updated project ${updatedProject.title}`,
-          metadata: {
-            projectId: updatedProject.id,
-          },
         },
       });
 
@@ -140,16 +140,14 @@ export class ProjectService {
         },
       });
 
-      await tx.workspaceActivity.create({
-        data: {
-          workspaceId,
-          actorId: currentUser.id,
+      await this.activityService.createActivityLog(tx, {
+        workspaceId,
+        actorId: currentUser.id,
+        projectId: archivedProject.id,
+        action: ProjectActivityActions.PROJECT_ARCHIVED,
+        description: `${currentUser.name} Archived project ${archivedProject.title}`,
+        metadata: {
           projectId: archivedProject.id,
-          action: ProjectActivityActions.PROJECT_ARCHIVED,
-          description: `${currentUser.name} Archived project ${archivedProject.title}`,
-          metadata: {
-            projectId: archivedProject.id,
-          },
         },
       });
 

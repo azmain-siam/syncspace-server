@@ -19,7 +19,7 @@ import { CreateProjectDto } from './dto/create-project.dto';
 import { UpdateProjectDto } from './dto/update-project.dto';
 import { ProjectService } from './project.service';
 
-@Controller('workspaces/:workspaceId/project')
+@Controller('workspaces/:workspaceId/projects')
 export class ProjectController {
   constructor(private readonly projectService: ProjectService) {}
 

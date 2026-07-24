@@ -1,5 +1,3 @@
-# AGENTS.md
-
 # SyncSpace Backend AI Development Guide
 
 ## Purpose
