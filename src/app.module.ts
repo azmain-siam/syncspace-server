@@ -16,6 +16,7 @@ import { ProjectModule } from './module/project/project.module';
 import { ActivityModule } from './module/activity/activity.module';
 import { BoardModule } from './module/board/board.module';
 import { ColumnModule } from './module/column/column.module';
+import { TaskModule } from './module/task/task.module';
 
 @Module({
   imports: [
@@ -58,6 +59,7 @@ import { ColumnModule } from './module/column/column.module';
     ActivityModule,
     BoardModule,
     ColumnModule,
+    TaskModule,
   ],
   providers: [
     { provide: APP_INTERCEPTOR, useClass: ResponseInterceptor },

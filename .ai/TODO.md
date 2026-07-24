@@ -120,15 +120,15 @@ Legend:
 
 ## Task
 
-- [ ] Create Task
-- [ ] Update Task
-- [ ] Delete Task
-- [ ] Move Task
-- [ ] Assign Member
-- [ ] Due Date
-- [ ] Priority
-- [ ] Labels
-- [ ] Archive Task
+- [x] Create Task
+- [x] Update Task
+- [x] Delete Task
+- [x] Move Task
+- [x] Assign Member
+- [x] Due Date
+- [x] Priority
+- [x] Labels
+- [x] Archive Task (Soft Delete)
 
 ---
 
@@ -159,7 +159,7 @@ Legend:
 - [x] Workspace Activity Logging (Write on Create/Update via DB transaction)
 - [x] Workspace Activity Feed API (`GET /workspaces/:workspaceId/activities`)
 - [x] Project Activity Logging
-- [ ] Task Activity Logging
+- [x] Task Activity Logging
 
 ---
 
@@ -241,19 +241,20 @@ Legend:
 3. [x] **DTO Email Validation**: Add `@IsEmail()` to `RegisterDto` & `LoginDto`.
 4. [x] **Centralize Activity Logging**: Create global `ActivityModule`/`ActivityService` and `GET /workspaces/:workspaceId/activities`.
 5. [x] **Phase 6 — Board & Column API Modules**: Implement Board & BoardColumn CRUD services and controllers.
-6. [ ] **Phase 7 — Task API Module**: Implement Task CRUD, Move Task across columns, Assign Member, Priority & Status updates.
+6. [x] **Phase 7 — Task API Module**: Implement Task CRUD, Move Task across columns, Assign Member, Priority & Status updates.
+7. [ ] **Phase 8 — Comment API Module**: Implement Comment CRUD on tasks.
 
 ---
 
 # Next Feature (What to do next)
 
 ```
-Phase 7 — Task API Module (Task Lifecycle & Management)
+Phase 8 — Comment API Module (Task Comments)
 
-Step 1: Create `src/module/task` with `TaskService`, `TaskController`, `dto` (CreateTaskDto, UpdateTaskDto, MoveTaskDto, TaskQueryDto), and `task.module.ts`.
-Step 2: Implement Task CRUD: POST/GET/PATCH/DELETE endpoints under `/workspaces/:workspaceId/projects/:projectId/boards/:boardId/columns/:columnId/tasks` or `/tasks`.
-Step 3: Implement Move Task across columns (calculates target order, handles order shifts).
-Step 4: Emit activity events (`TASK_CREATED`, `TASK_UPDATED`, `TASK_MOVED`, `TASK_DELETED`, `TASK_ASSIGNED`) via ActivityService.
+Step 1: Create `src/module/comment` with `CommentService`, `CommentController`, `dto` (CreateCommentDto, UpdateCommentDto), and `comment.module.ts`.
+Step 2: Implement Comment CRUD under `/workspaces/:workspaceId/projects/:projectId/boards/:boardId/columns/:columnId/tasks/:taskId/comments`.
+Step 3: Verify commenter workspace membership and task existence.
+Step 4: Emit activity events (`COMMENT_CREATED`, `COMMENT_UPDATED`, `COMMENT_DELETED`) via ActivityService.
 ```
 
 ---
