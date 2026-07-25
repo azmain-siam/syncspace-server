@@ -1,4 +1,4 @@
-import { Body, Controller, Post, UseGuards } from '@nestjs/common';
+import { Body, Controller, Get, Post, Query, UseGuards } from '@nestjs/common';
 import { ApiOperation } from '@nestjs/swagger';
 import { CurrentUser } from 'src/common/decorators/get-user.decorator';
 import { ResponseMessage } from 'src/common/decorators/response-message.decorator';
@@ -6,6 +6,7 @@ import type { User } from 'src/common/interfaces/user.interface';
 import { AuthService } from './auth.service';
 import { LoginDto } from './dto/login.dto';
 import { RegisterDto } from './dto/register.dto';
+import { VerifyEmailDto } from './dto/verify-email.dto';
 import { JwtAuthGuard } from './guards/jwt-auth.guard';
 import { RefreshTokenGuard } from './guards/refresh-auth.guard';
 
@@ -14,10 +15,25 @@ export class AuthController {
   constructor(private readonly authService: AuthService) {}
 
   @Post('register')
-  @ResponseMessage('User registered successfully')
+  @ResponseMessage('Registration successful. Please verify your email.')
   @ApiOperation({ summary: 'Register user' })
   register(@Body() dto: RegisterDto) {
     return this.authService.register(dto);
+  }
+
+  @Get('verify-email')
+  @ResponseMessage('Email verified successfully')
+  @ApiOperation({ summary: 'Verify email address with token' })
+  verifyEmail(@Query() query: VerifyEmailDto) {
+    return this.authService.verifyEmail(query.token);
+  }
+
+  @Post('resend-verification')
+  @UseGuards(JwtAuthGuard)
+  @ResponseMessage('Verification email resent successfully')
+  @ApiOperation({ summary: 'Resend email verification token' })
+  resendVerification(@CurrentUser() user: User) {
+    return this.authService.resendVerificationEmail(user.id);
   }
 
   @Post('login')

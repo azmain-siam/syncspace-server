@@ -13,7 +13,23 @@ export class TemplateService {
   private readonly templatesDir: string;
 
   constructor() {
-    this.templatesDir = path.join(__dirname, '..', 'templates');
+    this.templatesDir = this.resolveTemplatesDir();
+  }
+
+  private resolveTemplatesDir(): string {
+    const candidates = [
+      path.join(__dirname, '..', 'templates'),
+      path.resolve(process.cwd(), 'src/module/email/templates'),
+      path.resolve(process.cwd(), 'dist/src/module/email/templates'),
+    ];
+
+    for (const candidate of candidates) {
+      if (fs.existsSync(candidate)) {
+        return candidate;
+      }
+    }
+
+    return candidates[0];
   }
 
   // Compile Handlebars template with context
