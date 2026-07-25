@@ -5,7 +5,12 @@ import {
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { JwtService } from '@nestjs/jwt';
-import { User, VerificationTokenType } from '@prisma/client';
+import {
+  AuthProvider,
+  OAuthProvider,
+  User,
+  VerificationTokenType,
+} from '@prisma/client';
 import * as bcrypt from 'bcrypt';
 import { generateSecureToken, hashToken } from '../../common/utils/token.util';
 import { AuditLogService } from '../audit/audit-log.service';
@@ -18,6 +23,7 @@ import { LoginDto } from './dto/login.dto';
 import { RegisterDto } from './dto/register.dto';
 import { ResetPasswordDto } from './dto/reset-password.dto';
 import { JwtPayload } from './interfaces/jwt-payload.interface';
+import { GoogleProfile } from './strategies/google.strategy';
 
 @Injectable()
 export class AuthService {
@@ -374,6 +380,166 @@ export class AuthService {
     };
   }
 
+  // Validate Google OAuth profile & login/link/register user
+  async validateGoogleUser(profile: GoogleProfile) {
+    // 1. Check if OAuthAccount exists for Google provider
+    const existingOAuth = await this.prisma.oAuthAccount.findUnique({
+      where: {
+        provider_providerId: {
+          provider: OAuthProvider.GOOGLE,
+          providerId: profile.googleId,
+        },
+      },
+      include: { user: true },
+    });
+
+    if (existingOAuth) {
+      const user = existingOAuth.user;
+
+      await this.prisma.user.update({
+        where: { id: user.id },
+        data: { lastLoginAt: new Date() },
+      });
+
+      await this.auditLogService.log({
+        actorId: user.id,
+        action: AuditAction.GOOGLE_LOGIN,
+        metadata: { userId: user.id, email: user.email },
+      });
+
+      const tokens = await this.generateTokens(user.id, user.email);
+      await this.storeHashedToken(user.id, tokens.refreshToken);
+
+      return {
+        user: this.sanitizeUser(user),
+        tokens,
+      };
+    }
+
+    // 2. Search if user exists by email
+    const existingUser = await this.prisma.user.findUnique({
+      where: { email: profile.email.toLowerCase() },
+    });
+
+    if (existingUser) {
+      // Automatically link Google account
+      await this.prisma.$transaction([
+        this.prisma.oAuthAccount.create({
+          data: {
+            userId: existingUser.id,
+            provider: OAuthProvider.GOOGLE,
+            providerId: profile.googleId,
+          },
+        }),
+        this.prisma.user.update({
+          where: { id: existingUser.id },
+          data: {
+            isEmailVerified: true,
+            emailVerifiedAt: existingUser.emailVerifiedAt || new Date(),
+            lastLoginAt: new Date(),
+            avatar: existingUser.avatar || profile.avatar,
+          },
+        }),
+      ]);
+
+      await this.auditLogService.log({
+        actorId: existingUser.id,
+        action: AuditAction.GOOGLE_ACCOUNT_LINKED,
+        metadata: { userId: existingUser.id, email: existingUser.email },
+      });
+
+      await this.auditLogService.log({
+        actorId: existingUser.id,
+        action: AuditAction.GOOGLE_LOGIN,
+        metadata: { userId: existingUser.id, email: existingUser.email },
+      });
+
+      const tokens = await this.generateTokens(
+        existingUser.id,
+        existingUser.email,
+      );
+      await this.storeHashedToken(existingUser.id, tokens.refreshToken);
+
+      return {
+        user: this.sanitizeUser(existingUser),
+        tokens,
+      };
+    }
+
+    // 3. User does not exist — Create new Google user
+    const username = await this.generateUniqueUsername(
+      profile.name,
+      profile.email,
+    );
+
+    const newUser = await this.prisma.$transaction(async (tx) => {
+      const createdUser = await tx.user.create({
+        data: {
+          username,
+          name: profile.name,
+          email: profile.email.toLowerCase(),
+          avatar: profile.avatar,
+          password: null,
+          provider: AuthProvider.GOOGLE,
+          isEmailVerified: true,
+          emailVerifiedAt: new Date(),
+          lastLoginAt: new Date(),
+        },
+      });
+
+      await tx.oAuthAccount.create({
+        data: {
+          userId: createdUser.id,
+          provider: OAuthProvider.GOOGLE,
+          providerId: profile.googleId,
+        },
+      });
+
+      return createdUser;
+    });
+
+    await this.auditLogService.log({
+      actorId: newUser.id,
+      action: AuditAction.GOOGLE_ACCOUNT_CREATED,
+      metadata: { userId: newUser.id, email: newUser.email },
+    });
+
+    await this.auditLogService.log({
+      actorId: newUser.id,
+      action: AuditAction.GOOGLE_LOGIN,
+      metadata: { userId: newUser.id, email: newUser.email },
+    });
+
+    const tokens = await this.generateTokens(newUser.id, newUser.email);
+    await this.storeHashedToken(newUser.id, tokens.refreshToken);
+
+    return {
+      user: this.sanitizeUser(newUser),
+      tokens,
+    };
+  }
+
+  // Generate unique username helper
+  private async generateUniqueUsername(
+    name: string,
+    email: string,
+  ): Promise<string> {
+    const baseName =
+      (
+        name.replace(/[^a-zA-Z0-9]/g, '').toLowerCase() || email.split('@')[0]
+      ).substring(0, 15) || 'user';
+
+    let username = baseName;
+    let counter = 1;
+
+    while (await this.prisma.user.findUnique({ where: { username } })) {
+      username = `${baseName}${counter}`;
+      counter++;
+    }
+
+    return username;
+  }
+
   // Login
   async login(dto: LoginDto) {
     const user = await this.prisma.user.findUnique({
@@ -391,6 +557,20 @@ export class AuthService {
         },
       });
       throw new UnauthorizedException('Invalid credentials');
+    }
+
+    if (!user.password) {
+      await this.auditLogService.log({
+        actorId: user.id,
+        action: AuditAction.FAILED_LOGIN,
+        metadata: {
+          email: dto.email,
+          reason: 'User account has no password set (OAuth account)',
+        },
+      });
+      throw new UnauthorizedException(
+        'Please sign in using your OAuth provider',
+      );
     }
 
     const isPasswordMatched = await bcrypt.compare(dto.password, user.password);

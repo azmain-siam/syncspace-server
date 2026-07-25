@@ -13,8 +13,10 @@ model User {
   name               String
   email              String    @unique
   phone              String?   @unique
-  password           String
+  password           String?
   avatar             String?
+  provider           AuthProvider @default(LOCAL)
+  lastLoginAt        DateTime?
   isEmailVerified    Boolean   @default(false)
   emailVerifiedAt    DateTime?
   hashedRefreshToken String?
@@ -37,6 +39,7 @@ model User {
   auditLogs                AuditLog[]            @relation("UserAuditLogs")
   verificationTokens       VerificationToken[]
   sentWorkspaceInvitations WorkspaceInvitation[] @relation("SentWorkspaceInvitations")
+  oauthAccounts            OAuthAccount[]
 }
 
 model VerificationToken {
@@ -428,3 +431,29 @@ enum InvitationStatus {
   EXPIRED
   CANCELLED
 }
+
+model OAuthAccount {
+  id         String        @id @default(uuid())
+  userId     String
+  provider   OAuthProvider
+  providerId String
+  createdAt  DateTime      @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerId])
+  @@index([userId])
+}
+
+enum AuthProvider {
+  LOCAL
+  GOOGLE
+}
+
+enum OAuthProvider {
+  GOOGLE
+  GITHUB
+  MICROSOFT
+  APPLE
+}
+

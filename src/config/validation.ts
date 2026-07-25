@@ -25,4 +25,10 @@ export const validationSchema = Joi.object({
   CLOUDINARY_CLOUD_NAME: Joi.string().required().allow(''),
   CLOUDINARY_API_KEY: Joi.string().required().allow(''),
   CLOUDINARY_API_SECRET: Joi.string().required().allow(''),
+
+  GOOGLE_CLIENT_ID: Joi.string().allow('').default(''),
+  GOOGLE_CLIENT_SECRET: Joi.string().allow('').default(''),
+  GOOGLE_CALLBACK_URL: Joi.string().default(
+    'http://localhost:5000/api/v1/auth/google/callback',
+  ),
 });

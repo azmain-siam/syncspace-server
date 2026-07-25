@@ -5,6 +5,7 @@ import { AuditLogModule } from '../audit/audit-log.module';
 import { EmailModule } from '../email/email.module';
 import { AuthController } from './auth.controller';
 import { AuthService } from './auth.service';
+import { GoogleStrategy } from './strategies/google.strategy';
 import { JwtStrategy } from './strategies/jwt.strategy';
 import { RefreshStrategy } from './strategies/refresh.strategy';
 
@@ -15,7 +16,7 @@ import { RefreshStrategy } from './strategies/refresh.strategy';
     AuditLogModule,
     EmailModule,
   ],
-  providers: [AuthService, JwtStrategy, RefreshStrategy],
+  providers: [AuthService, JwtStrategy, RefreshStrategy, GoogleStrategy],
   controllers: [AuthController],
 })
 export class AuthModule {}
