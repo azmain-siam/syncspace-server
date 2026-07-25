@@ -1,10 +1,10 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { User } from 'src/common/interfaces/user.interface';
 import { ActivityService } from '../activity/activity.service';
+import { ActivityAction } from '../activity/enums/activity-action.enum';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateBoardDto } from './dto/create-board.dto';
 import { UpdateBoardDto } from './dto/update-board.dto';
-import { BoardActivityAction } from './enums/board-activity.enum';
 
 const DEFAULT_COLUMNS = ['Todo', 'In Progress', 'Review', 'Done'];
 
@@ -68,7 +68,7 @@ export class BoardService {
         actorId: currentUser.id,
         projectId,
         boardId: board.id,
-        action: BoardActivityAction.BOARD_CREATED,
+        action: ActivityAction.BOARD_CREATED,
         description: `${currentUser.name} created board ${board.title}`,
         metadata: { boardId: board.id, title: board.title },
       });
@@ -158,7 +158,7 @@ export class BoardService {
         actorId: currentUser.id,
         projectId,
         boardId: updatedBoard.id,
-        action: BoardActivityAction.BOARD_UPDATED,
+        action: ActivityAction.BOARD_UPDATED,
         description: `${currentUser.name} updated board ${updatedBoard.title}`,
         metadata: { boardId: updatedBoard.id, title: updatedBoard.title },
       });
@@ -186,7 +186,7 @@ export class BoardService {
         actorId: currentUser.id,
         projectId,
         boardId,
-        action: BoardActivityAction.BOARD_DELETED,
+        action: ActivityAction.BOARD_DELETED,
         description: `${currentUser.name} deleted board ${board.title}`,
         metadata: { boardId, title: board.title },
       });

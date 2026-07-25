@@ -27,7 +27,6 @@ model User {
   createdTasks        Task[]              @relation("TaskCreator")
   comments            Comment[]
   uploadedFiles       Attachment[]
-  activities          ActivityLog[]
   workspaceActivities WorkspaceActivity[]
   projectMembers      ProjectMember[]
 }
@@ -48,10 +47,10 @@ model Workspace {
   owner               User                @relation("WorkspaceOwner", fields: [ownerId], references: [id])
   members             WorkspaceMember[]
   projects            Project[]
-  activities          ActivityLog[]
   workspaceActivities WorkspaceActivity[]
 
   @@index([ownerId])
+  @@index([deletedAt])
 }
 
 model WorkspaceMember {
@@ -122,6 +121,8 @@ model Project {
   @@index([workspaceId])
   @@index([status])
   @@index([createdById])
+  @@index([workspaceId, deletedAt])
+  @@index([workspaceId, status])
 }
 
 model ProjectMember {
@@ -190,7 +191,6 @@ model Task {
   creator             User                @relation("TaskCreator", fields: [createdBy], references: [id])
   comments            Comment[]
   attachments         Attachment[]
-  activities          ActivityLog[]
   workspaceActivities WorkspaceActivity[]
 
   @@unique([columnId, order])
@@ -200,6 +200,7 @@ model Task {
   @@index([priority])
   @@index([status])
   @@index([dueDate])
+  @@index([columnId, deletedAt])
 }
 
 model Comment {
@@ -233,26 +234,6 @@ model Attachment {
 
   @@index([taskId])
   @@index([uploadedBy])
-}
-
-model ActivityLog {
-  id          String         @id @default(uuid())
-  workspaceId String
-  userId      String
-  taskId      String?
-  action      ActivityAction
-  description String
-
-  createdAt DateTime @default(now())
-
-  workspace Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
-  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
-  task      Task?     @relation(fields: [taskId], references: [id], onDelete: Cascade)
-
-  @@index([workspaceId])
-  @@index([userId])
-  @@index([taskId])
-  @@index([createdAt])
 }
 
 // ENUMS
@@ -301,13 +282,4 @@ enum TaskStatus {
   IN_PROGRESS
   REVIEW
   DONE
-}
-
-enum ActivityAction {
-  CREATE
-  UPDATE
-  DELETE
-  MOVE
-  ASSIGN
-  COMMENT
 }

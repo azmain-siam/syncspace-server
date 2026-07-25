@@ -4,8 +4,11 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { Prisma, TaskPriority, TaskStatus } from '@prisma/client';
+import { SAFE_USER_MINIMAL_SELECT } from 'src/common/constants/prisma-selects.constant';
 import { User } from 'src/common/interfaces/user.interface';
+import { calculatePaginationMeta } from 'src/common/utils/pagination.util';
 import { ActivityService } from '../activity/activity.service';
+import { ActivityAction } from '../activity/enums/activity-action.enum';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateTaskDto } from './dto/create-task.dto';
 import { MoveTaskDto } from './dto/move-task.dto';
@@ -105,22 +108,8 @@ export class TaskService {
           order: targetOrder,
         },
         include: {
-          assignee: {
-            select: {
-              id: true,
-              name: true,
-              email: true,
-              avatar: true,
-            },
-          },
-          creator: {
-            select: {
-              id: true,
-              name: true,
-              email: true,
-              avatar: true,
-            },
-          },
+          assignee: { select: SAFE_USER_MINIMAL_SELECT },
+          creator: { select: SAFE_USER_MINIMAL_SELECT },
         },
       });
 
@@ -130,7 +119,7 @@ export class TaskService {
         projectId,
         boardId,
         taskId: task.id,
-        action: 'TASK_CREATED',
+        action: ActivityAction.TASK_CREATED,
         description: `${currentUser.name} created task ${task.title}`,
         metadata: { taskId: task.id, title: task.title, order: task.order },
       });
@@ -142,7 +131,7 @@ export class TaskService {
           projectId,
           boardId,
           taskId: task.id,
-          action: 'TASK_ASSIGNED',
+          action: ActivityAction.TASK_ASSIGNED,
           description: `Assigned task ${task.title} to ${task.assignee?.name}`,
           metadata: { taskId: task.id, assigneeId: dto.assigneeId },
         });
@@ -189,12 +178,8 @@ export class TaskService {
         skip,
         take: limit,
         include: {
-          assignee: {
-            select: { id: true, name: true, email: true, avatar: true },
-          },
-          creator: {
-            select: { id: true, name: true, email: true, avatar: true },
-          },
+          assignee: { select: SAFE_USER_MINIMAL_SELECT },
+          creator: { select: SAFE_USER_MINIMAL_SELECT },
           _count: {
             select: { comments: true, attachments: true },
           },
@@ -203,18 +188,9 @@ export class TaskService {
       this.prisma.task.count({ where }),
     ]);
 
-    const totalPages = Math.ceil(total / limit);
-
     return {
       tasks,
-      meta: {
-        page,
-        limit,
-        total,
-        totalPages,
-        hasNext: page < totalPages,
-        hasPrev: page > 1,
-      },
+      meta: calculatePaginationMeta(total, page, limit),
     };
   }
 
@@ -235,12 +211,8 @@ export class TaskService {
         deletedAt: null,
       },
       include: {
-        assignee: {
-          select: { id: true, name: true, email: true, avatar: true },
-        },
-        creator: {
-          select: { id: true, name: true, email: true, avatar: true },
-        },
+        assignee: { select: SAFE_USER_MINIMAL_SELECT },
+        creator: { select: SAFE_USER_MINIMAL_SELECT },
         column: {
           select: { id: true, title: true },
         },
@@ -291,12 +263,8 @@ export class TaskService {
           dueDate: dto.dueDate ? new Date(dto.dueDate) : existingTask.dueDate,
         },
         include: {
-          assignee: {
-            select: { id: true, name: true, email: true, avatar: true },
-          },
-          creator: {
-            select: { id: true, name: true, email: true, avatar: true },
-          },
+          assignee: { select: SAFE_USER_MINIMAL_SELECT },
+          creator: { select: SAFE_USER_MINIMAL_SELECT },
         },
       });
 
@@ -306,7 +274,7 @@ export class TaskService {
         projectId,
         boardId,
         taskId: updatedTask.id,
-        action: 'TASK_UPDATED',
+        action: ActivityAction.TASK_UPDATED,
         description: `${currentUser.name} updated task ${updatedTask.title}`,
         metadata: { taskId: updatedTask.id, title: updatedTask.title },
       });
@@ -318,7 +286,7 @@ export class TaskService {
           projectId,
           boardId,
           taskId: updatedTask.id,
-          action: 'TASK_ASSIGNED',
+          action: ActivityAction.TASK_ASSIGNED,
           description: `Assigned task ${updatedTask.title} to ${updatedTask.assignee?.name}`,
           metadata: { taskId: updatedTask.id, assigneeId: dto.assigneeId },
         });
@@ -350,7 +318,7 @@ export class TaskService {
     }
 
     return this.prisma.$transaction(async (tx) => {
-      // Step A: Temporarily set moving task's order to a negative offset to avoid unique constraint collision
+      // Step A: Temporarily set moving task's order to negative offset
       await tx.task.update({
         where: { id: taskId },
         data: { order: -9999 },
@@ -366,33 +334,24 @@ export class TaskService {
         orderBy: { order: 'asc' },
       });
 
-      // Step C: Re-index target column tasks, making room at dto.targetOrder
+      // Step C: Batch update target tasks into reindexed order positions via Promise.all
+      const updatePromises: Promise<any>[] = [];
       let newOrder = 0;
       for (const t of targetColumnTasks) {
         if (newOrder === dto.targetOrder) {
           newOrder++;
         }
-        await tx.task.update({
-          where: { id: t.id },
-          data: { order: -(newOrder + 1000) },
-        });
+        updatePromises.push(
+          tx.task.update({
+            where: { id: t.id },
+            data: { order: newOrder },
+          }),
+        );
         newOrder++;
       }
+      await Promise.all(updatePromises);
 
-      // Step D: Apply final orders to shifted target tasks
-      newOrder = 0;
-      for (const t of targetColumnTasks) {
-        if (newOrder === dto.targetOrder) {
-          newOrder++;
-        }
-        await tx.task.update({
-          where: { id: t.id },
-          data: { order: newOrder },
-        });
-        newOrder++;
-      }
-
-      // Step E: Place moving task into target column and target order
+      // Step D: Place moving task into target column and target order
       const movedTask = await tx.task.update({
         where: { id: taskId },
         data: {
@@ -401,9 +360,7 @@ export class TaskService {
         },
         include: {
           column: { select: { id: true, title: true } },
-          assignee: {
-            select: { id: true, name: true, email: true, avatar: true },
-          },
+          assignee: { select: SAFE_USER_MINIMAL_SELECT },
         },
       });
 
@@ -413,16 +370,14 @@ export class TaskService {
         projectId,
         boardId,
         taskId: movedTask.id,
-        action: 'TASK_MOVED',
+        action: ActivityAction.TASK_MOVED,
         description: `${currentUser.name} moved task ${movedTask.title} to ${targetColumn.title}`,
-        metadata: JSON.parse(
-          JSON.stringify({
-            taskId: movedTask.id,
-            fromColumnId: columnId,
-            toColumnId: dto.targetColumnId,
-            order: dto.targetOrder,
-          }),
-        ) as Prisma.InputJsonValue,
+        metadata: {
+          taskId: movedTask.id,
+          fromColumnId: columnId,
+          toColumnId: dto.targetColumnId,
+          order: dto.targetOrder,
+        },
       });
 
       return movedTask;
@@ -458,7 +413,7 @@ export class TaskService {
         projectId,
         boardId,
         taskId,
-        action: 'TASK_DELETED',
+        action: ActivityAction.TASK_DELETED,
         description: `${currentUser.name} deleted task ${task.title}`,
         metadata: { taskId, title: task.title },
       });

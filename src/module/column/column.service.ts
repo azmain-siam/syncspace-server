@@ -6,11 +6,11 @@ import {
 import { Prisma } from '@prisma/client';
 import type { User } from 'src/common/interfaces/user.interface';
 import { ActivityService } from '../activity/activity.service';
+import { ActivityAction } from '../activity/enums/activity-action.enum';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateColumnDto } from './dto/create-column.dto';
 import { ReorderColumnsDto } from './dto/reorder-columns.dto';
 import { UpdateColumnDto } from './dto/update-column.dto';
-import { ColumnActivityAction } from './enums/column-activity.enum';
 
 @Injectable()
 export class ColumnService {
@@ -78,7 +78,7 @@ export class ColumnService {
         actorId: currentUser.id,
         projectId,
         boardId,
-        action: ColumnActivityAction.COLUMN_CREATED,
+        action: ActivityAction.COLUMN_CREATED,
         description: `${currentUser.name} created column ${column.title}`,
         metadata: {
           columnId: column.id,
@@ -157,7 +157,7 @@ export class ColumnService {
         actorId: currentUser.id,
         projectId,
         boardId,
-        action: ColumnActivityAction.COLUMN_UPDATED,
+        action: ActivityAction.COLUMN_UPDATED,
         description: `${currentUser.name} updated column ${updatedColumn.title}`,
         metadata: { columnId, title: updatedColumn.title },
       });
@@ -191,7 +191,7 @@ export class ColumnService {
         actorId: currentUser.id,
         projectId,
         boardId,
-        action: ColumnActivityAction.COLUMN_DELETED,
+        action: ActivityAction.COLUMN_DELETED,
         description: `${currentUser.name} deleted column ${column.title}`,
         metadata: { columnId, title: column.title },
       });
@@ -225,33 +225,38 @@ export class ColumnService {
 
     return this.prisma.$transaction(async (tx) => {
       // Step A: Shift to temporary negative order to bypass unique constraint
-      for (let i = 0; i < dto.columnOrders.length; i++) {
-        const item = dto.columnOrders[i];
-        await tx.boardColumn.update({
-          where: { id: item.id },
-          data: { order: -(i + 1000) },
-        });
-      }
+      await Promise.all(
+        dto.columnOrders.map((item, idx) =>
+          tx.boardColumn.update({
+            where: { id: item.id },
+            data: { order: -(idx + 1000) },
+          }),
+        ),
+      );
 
       // Step B: Set to final target order
-      for (const item of dto.columnOrders) {
-        await tx.boardColumn.update({
-          where: { id: item.id },
-          data: { order: item.order },
-        });
-      }
+      await Promise.all(
+        dto.columnOrders.map((item) =>
+          tx.boardColumn.update({
+            where: { id: item.id },
+            data: { order: item.order },
+          }),
+        ),
+      );
 
       await this.activityService.createActivityLog(tx, {
         workspaceId,
         actorId: currentUser.id,
         projectId,
         boardId,
-        action: ColumnActivityAction.COLUMN_REORDERED,
+        action: ActivityAction.COLUMN_REORDERED,
         description: `${currentUser.name} reordered board columns`,
-        metadata: {
-          boardId,
-          columnOrders: dto.columnOrders as unknown as Prisma.InputJsonValue,
-        },
+        metadata: JSON.parse(
+          JSON.stringify({
+            boardId,
+            columnOrders: dto.columnOrders,
+          }),
+        ) as Prisma.InputJsonValue,
       });
 
       return tx.boardColumn.findMany({

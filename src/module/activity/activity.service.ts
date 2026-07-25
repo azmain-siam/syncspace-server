@@ -1,5 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
+import { SAFE_USER_MINIMAL_SELECT } from 'src/common/constants/prisma-selects.constant';
+import { calculatePaginationMeta } from 'src/common/utils/pagination.util';
 import { PrismaService } from '../prisma/prisma.service';
 import { ActivityQueryDto } from './dto/activity-query.dto';
 
@@ -56,12 +58,7 @@ export class ActivityService {
         take: limit,
         include: {
           actor: {
-            select: {
-              id: true,
-              name: true,
-              email: true,
-              avatar: true,
-            },
+            select: SAFE_USER_MINIMAL_SELECT,
           },
           project: {
             select: {
@@ -78,18 +75,9 @@ export class ActivityService {
       }),
     ]);
 
-    const totalPages = Math.ceil(total / limit);
-
     return {
       activities,
-      meta: {
-        page,
-        limit,
-        total,
-        totalPages,
-        hasNext: page < totalPages,
-        hasPrev: page > 1,
-      },
+      meta: calculatePaginationMeta(total, page, limit),
     };
   }
 }

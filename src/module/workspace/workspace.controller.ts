@@ -142,7 +142,12 @@ export class WorkspaceController {
   updateWorkspaceSettings(
     @Param('workspaceId') workspaceId: string,
     @Body() dto: UpdateWorkspaceSettingsDto,
+    @CurrentUser() user: User,
   ) {
-    return this.workspaceService.updateWorkspaceSettings(workspaceId, dto);
+    return this.workspaceService.updateWorkspaceSettings(
+      workspaceId,
+      dto,
+      user,
+    );
   }
 }

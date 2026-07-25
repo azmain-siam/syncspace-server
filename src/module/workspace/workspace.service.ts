@@ -4,16 +4,17 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
-import { Prisma, WorkspaceRole } from '@prisma/client';
+import { WorkspaceRole } from '@prisma/client';
 import { User } from 'src/common/interfaces/user.interface';
-import { PrismaService } from '../prisma/prisma.service';
+import { slugify } from 'src/common/utils/slug.util';
 import { ActivityService } from '../activity/activity.service';
+import { ActivityAction } from '../activity/enums/activity-action.enum';
+import { PrismaService } from '../prisma/prisma.service';
 import { CreateWorkspaceDto } from './dto/create-workspace.dto';
 import { InviteMemberDto } from './dto/invite-member.dto';
 import { TransferOwnershipDto } from './dto/transfer-ownership.dto';
 import { UpdateMemberRoleDto } from './dto/update-member-role.dto';
 import { UpdateWorkspaceSettingsDto } from './dto/update-settings.dto';
-import { ActivityAction } from './enums/workspace-activity-action.enum';
 
 @Injectable()
 export class WorkspaceService {
@@ -33,7 +34,7 @@ export class WorkspaceService {
           ownerId: userId,
           name: createWorkspaceDto.name,
           logo: createWorkspaceDto.logo,
-          slug: createWorkspaceDto.name.toLowerCase().replace(/ /g, '-'),
+          slug: slugify(createWorkspaceDto.name),
         },
       });
 
@@ -45,17 +46,16 @@ export class WorkspaceService {
         },
       });
 
-      await this.createActivityLog(
-        tx,
-        workspace.id,
-        userId,
-        ActivityAction.WORKSPACE_CREATED,
-        `Created workspace ${workspace.name}`,
-        {
+      await this.activityService.createActivityLog(tx, {
+        workspaceId: workspace.id,
+        actorId: userId,
+        action: ActivityAction.WORKSPACE_CREATED,
+        description: `Created workspace ${workspace.name}`,
+        metadata: {
           workspaceId: workspace.id,
           workspaceName: workspace.name,
         },
-      );
+      });
 
       return workspace;
     });
@@ -63,7 +63,7 @@ export class WorkspaceService {
 
   // Get my workspaces
   async getMyWorkspaces(userId: string) {
-    const workspaces = await this.prisma.workspace.findMany({
+    return this.prisma.workspace.findMany({
       where: {
         deletedAt: null,
         members: {
@@ -72,9 +72,10 @@ export class WorkspaceService {
           },
         },
       },
+      orderBy: {
+        createdAt: 'desc',
+      },
     });
-
-    return workspaces;
   }
 
   // Invite member
@@ -83,7 +84,6 @@ export class WorkspaceService {
     dto: InviteMemberDto,
     currentUserId: string,
   ) {
-    // find invited user
     const user = await this.prisma.user.findUnique({
       where: {
         email: dto.email,
@@ -92,7 +92,6 @@ export class WorkspaceService {
 
     if (!user) throw new NotFoundException('User not found');
 
-    // prevent duplicate members
     const existingMember = await this.prisma.workspaceMember.findUnique({
       where: {
         workspaceId_userId: {
@@ -106,8 +105,7 @@ export class WorkspaceService {
       throw new BadRequestException('User already a member');
     }
 
-    // create membership and activity log
-    await this.prisma.$transaction(async (tx) => {
+    return this.prisma.$transaction(async (tx) => {
       const membership = await tx.workspaceMember.create({
         data: {
           workspaceId,
@@ -116,18 +114,17 @@ export class WorkspaceService {
         },
       });
 
-      await this.createActivityLog(
-        tx,
+      await this.activityService.createActivityLog(tx, {
         workspaceId,
-        currentUserId,
-        ActivityAction.MEMBER_INVITED,
-        `Invited ${user.name} to workspace`,
-        {
+        actorId: currentUserId,
+        action: ActivityAction.MEMBER_INVITED,
+        description: `Invited ${user.name} to workspace`,
+        metadata: {
           workspaceId,
           invitedUserId: user.id,
           invitedUserName: user.name,
         },
-      );
+      });
 
       return membership;
     });
@@ -169,18 +166,17 @@ export class WorkspaceService {
         },
       });
 
-      await this.createActivityLog(
-        tx,
+      await this.activityService.createActivityLog(tx, {
         workspaceId,
-        user.id,
-        ActivityAction.MEMBER_REMOVED,
-        `${user.name} removed ${member.user.name} from workspace`,
-        {
+        actorId: user.id,
+        action: ActivityAction.MEMBER_REMOVED,
+        description: `${user.name} removed ${member.user.name} from workspace`,
+        metadata: {
           workspaceId,
           removedUserId: member.userId,
           removedUserName: member.user.name,
         },
-      );
+      });
     });
 
     return null;
@@ -210,7 +206,6 @@ export class WorkspaceService {
       throw new BadRequestException('Ownership transfer required');
     }
 
-    // update role and activity log
     await this.prisma.$transaction(async (tx) => {
       const updatedMember = await tx.workspaceMember.update({
         where: {
@@ -227,19 +222,18 @@ export class WorkspaceService {
         },
       });
 
-      await this.createActivityLog(
-        tx,
+      await this.activityService.createActivityLog(tx, {
         workspaceId,
-        user.id,
-        ActivityAction.ROLE_UPDATED,
-        `Updated role of ${updatedMember.user.name} to ${dto.role}`,
-        {
+        actorId: user.id,
+        action: ActivityAction.ROLE_UPDATED,
+        description: `Updated role of ${updatedMember.user.name} to ${dto.role}`,
+        metadata: {
           workspaceId,
           updatedUserId: member.userId,
           updatedUserName: updatedMember.user.name,
           newRole: dto.role,
         },
-      );
+      });
     });
   }
 
@@ -249,8 +243,7 @@ export class WorkspaceService {
     dto: TransferOwnershipDto,
     currentOwnerId: string,
   ) {
-    await this.prisma.$transaction(async (tx) => {
-      // update ownership
+    return this.prisma.$transaction(async (tx) => {
       await tx.workspace.update({
         where: {
           id: workspaceId,
@@ -260,7 +253,6 @@ export class WorkspaceService {
         },
       });
 
-      // update current owner role to ADMIN
       await tx.workspaceMember.update({
         where: {
           workspaceId_userId: {
@@ -273,7 +265,6 @@ export class WorkspaceService {
         },
       });
 
-      // update new owner role to OWNER
       await tx.workspaceMember.update({
         where: {
           workspaceId_userId: {
@@ -286,18 +277,16 @@ export class WorkspaceService {
         },
       });
 
-      // create activity log
-      await this.createActivityLog(
-        tx,
+      await this.activityService.createActivityLog(tx, {
         workspaceId,
-        currentOwnerId,
-        ActivityAction.ROLE_UPDATED,
-        `Transferred ownership to ${dto.memberId}`,
-        {
+        actorId: currentOwnerId,
+        action: ActivityAction.ROLE_UPDATED,
+        description: `Transferred ownership to ${dto.memberId}`,
+        metadata: {
           workspaceId,
           transferredUserId: dto.memberId,
         },
-      );
+      });
 
       return null;
     });
@@ -317,7 +306,8 @@ export class WorkspaceService {
     if (!member) {
       throw new ForbiddenException('You are not a member of this workspace');
     }
-    const members = await this.prisma.workspaceMember.findMany({
+
+    return this.prisma.workspaceMember.findMany({
       where: {
         workspaceId,
       },
@@ -333,14 +323,13 @@ export class WorkspaceService {
         },
       },
     });
-
-    return members;
   }
 
   // Update workspace settings
   async updateWorkspaceSettings(
     workspaceId: string,
     dto: UpdateWorkspaceSettingsDto,
+    currentUser: User,
   ) {
     const workspace = await this.prisma.workspace.findUnique({
       where: {
@@ -352,36 +341,28 @@ export class WorkspaceService {
       throw new NotFoundException('Workspace not found');
     }
 
-    const updatedWorkspace = await this.prisma.workspace.update({
-      where: {
-        id: workspaceId,
-      },
-      data: {
-        name: dto.name ?? workspace.name,
-        description: dto.description ?? workspace.description,
-        logo: dto.logo ?? workspace.logo,
-        visibility: dto.visibility ?? workspace.visibility,
-      },
-    });
+    return this.prisma.$transaction(async (tx) => {
+      const updatedWorkspace = await tx.workspace.update({
+        where: {
+          id: workspaceId,
+        },
+        data: {
+          name: dto.name ?? workspace.name,
+          description: dto.description ?? workspace.description,
+          logo: dto.logo ?? workspace.logo,
+          visibility: dto.visibility ?? workspace.visibility,
+        },
+      });
 
-    return updatedWorkspace;
-  }
+      await this.activityService.createActivityLog(tx, {
+        workspaceId,
+        actorId: currentUser.id,
+        action: ActivityAction.SETTINGS_UPDATED,
+        description: `${currentUser.name} updated workspace settings`,
+        metadata: { workspaceId },
+      });
 
-  // Create activity log
-  async createActivityLog(
-    tx: Prisma.TransactionClient,
-    workspaceId: string,
-    actorId: string,
-    action: string,
-    description?: string,
-    metadata?: Prisma.InputJsonValue,
-  ) {
-    return this.activityService.createActivityLog(tx, {
-      workspaceId,
-      actorId,
-      action,
-      description,
-      metadata,
+      return updatedWorkspace;
     });
   }
 }

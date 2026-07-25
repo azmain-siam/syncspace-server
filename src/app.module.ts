@@ -7,16 +7,16 @@ import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler';
 import { ResponseInterceptor } from './common/interceptors/response.interceptor';
 import configuration from './config/configuration';
 import { validationSchema } from './config/validation';
-import { AuthModule } from './module/auth/auth.module';
-import { EmailService } from './module/email/email.service';
-import { PrismaModule } from './module/prisma/prisma.module';
-import { UserModule } from './module/user/user.module';
-import { WorkspaceModule } from './module/workspace/workspace.module';
-import { ProjectModule } from './module/project/project.module';
 import { ActivityModule } from './module/activity/activity.module';
+import { AuthModule } from './module/auth/auth.module';
 import { BoardModule } from './module/board/board.module';
 import { ColumnModule } from './module/column/column.module';
+import { EmailModule } from './module/email/email.module';
+import { PrismaModule } from './module/prisma/prisma.module';
+import { ProjectModule } from './module/project/project.module';
 import { TaskModule } from './module/task/task.module';
+import { UserModule } from './module/user/user.module';
+import { WorkspaceModule } from './module/workspace/workspace.module';
 
 @Module({
   imports: [
@@ -26,18 +26,7 @@ import { TaskModule } from './module/task/task.module';
       load: [configuration],
       validationSchema,
     }),
-    // LoggerModule.forRoot({
-    //   pinoHttp: {
-    //     level: process.env.NODE_ENV === 'production' ? 'info' : 'debug',
-    //     transport:
-    //       process.env.NODE_ENV !== 'production'
-    //         ? {
-    //             target: 'pino-pretty',
-    //           }
-    //         : undefined,
-    //   },
-    // }),
-    ThrottlerModule.forRoot({ throttlers: [{ ttl: 60000, limit: 10 }] }),
+    ThrottlerModule.forRoot({ throttlers: [{ ttl: 60000, limit: 100 }] }),
     MailerModule.forRootAsync({
       inject: [ConfigService],
       useFactory: (config: ConfigService) => ({
@@ -54,6 +43,7 @@ import { TaskModule } from './module/task/task.module';
     PrismaModule,
     UserModule,
     AuthModule,
+    EmailModule,
     WorkspaceModule,
     ProjectModule,
     ActivityModule,
@@ -64,7 +54,6 @@ import { TaskModule } from './module/task/task.module';
   providers: [
     { provide: APP_INTERCEPTOR, useClass: ResponseInterceptor },
     { provide: APP_GUARD, useClass: ThrottlerGuard },
-    EmailService,
   ],
 })
 export class AppModule {}
