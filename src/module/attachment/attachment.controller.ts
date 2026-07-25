@@ -1,4 +1,5 @@
 import {
+  Body,
   Controller,
   Delete,
   Get,
@@ -9,7 +10,7 @@ import {
   UseInterceptors,
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
-import { ApiConsumes, ApiOperation, ApiTags } from '@nestjs/swagger';
+import { ApiBody, ApiConsumes, ApiOperation, ApiTags } from '@nestjs/swagger';
 import { CurrentUser } from 'src/common/decorators/get-user.decorator';
 import { ResponseMessage } from 'src/common/decorators/response-message.decorator';
 import { WorkspaceRoles } from 'src/common/decorators/workspace-roles.decorator';
@@ -19,6 +20,7 @@ import { storageConfig } from 'src/config/storage.config';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { WorkspaceRole } from '../workspace/enums/workspace-role.enum';
 import { AttachmentService } from './attachment.service';
+import { UploadAttachmentDto } from './dto/upload-attachment.dto';
 
 @ApiTags('Attachments')
 @Controller(
@@ -40,6 +42,10 @@ export class AttachmentController {
     }),
   )
   @ApiConsumes('multipart/form-data')
+  @ApiBody({
+    description: 'Task attachment file upload',
+    type: UploadAttachmentDto,
+  })
   @ResponseMessage('Attachment uploaded successfully')
   @ApiOperation({ summary: 'Upload file attachment to a task' })
   uploadAttachment(
@@ -48,6 +54,7 @@ export class AttachmentController {
     @Param('boardId') boardId: string,
     @Param('columnId') columnId: string,
     @Param('taskId') taskId: string,
+    @Body() _dto: UploadAttachmentDto,
     @UploadedFile() file: Express.Multer.File,
     @CurrentUser() user: User,
   ) {
