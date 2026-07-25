@@ -19,7 +19,7 @@ import { CreateProjectDto } from './dto/create-project.dto';
 import { UpdateProjectDto } from './dto/update-project.dto';
 import { ProjectService } from './project.service';
 
-@Controller('workspaces/:workspaceId/project')
+@Controller('workspaces/:workspaceId/projects')
 export class ProjectController {
   constructor(private readonly projectService: ProjectService) {}
 
@@ -47,8 +47,8 @@ export class ProjectController {
   )
   @ResponseMessage('Projects fetched successfully')
   @ApiOperation({ summary: 'Get projects by workspace member' })
-  getWorkspaceProject(@Param('workspaceId') workspaceId: string) {
-    return this.projectService.getWorkspaceProject(workspaceId);
+  getWorkspaceProjects(@Param('workspaceId') workspaceId: string) {
+    return this.projectService.getWorkspaceProjects(workspaceId);
   }
 
   // Get Project by Workspace Member
@@ -83,7 +83,7 @@ export class ProjectController {
     return this.projectService.updateProject(projectId, workspaceId, dto, user);
   }
 
-  // Delete or Archive project by project owner
+  // Archive project by workspace owner
   @Patch(':projectId/archive')
   @UseGuards(JwtAuthGuard, WorkspaceRoleGuard)
   @WorkspaceRoles(WorkspaceRole.OWNER)

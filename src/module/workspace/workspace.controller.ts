@@ -118,7 +118,12 @@ export class WorkspaceController {
 
   // Get workspace members
   @Get(':workspaceId/members')
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(JwtAuthGuard, WorkspaceRoleGuard)
+  @WorkspaceRoles(
+    WorkspaceRole.OWNER,
+    WorkspaceRole.ADMIN,
+    WorkspaceRole.MEMBER,
+  )
   @ResponseMessage('Members fetched successfully')
   @ApiOperation({ summary: 'Get workspace members' })
   getWorkspaceMembers(
@@ -137,7 +142,12 @@ export class WorkspaceController {
   updateWorkspaceSettings(
     @Param('workspaceId') workspaceId: string,
     @Body() dto: UpdateWorkspaceSettingsDto,
+    @CurrentUser() user: User,
   ) {
-    return this.workspaceService.updateWorkspaceSettings(workspaceId, dto);
+    return this.workspaceService.updateWorkspaceSettings(
+      workspaceId,
+      dto,
+      user,
+    );
   }
 }
