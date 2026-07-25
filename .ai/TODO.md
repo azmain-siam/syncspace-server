@@ -256,7 +256,8 @@ Legend:
 9. [x] **Phase 9 — Attachment & File Upload Module**: Implement Task Attachment upload, list, delete, and static file serving.
 10. [x] **Phase 11 — Notification Module**: Implement event-driven notifications for task assignments, mentions, and invitations.
 11. [x] **Centralized Email Infrastructure Module**: Implement production-ready `EmailModule` with Nodemailer, Handlebars templates, Joi env validation, and SOLID provider abstraction.
-12. [ ] **Phase 12 — Realtime Module**: Implement Socket.IO for online users, live task updates, and real-time comments.
+12. [x] **Platform Audit Logging Infrastructure**: Implement `AuditLog` table, `AuditLogService`, `AuditAction` enum, and integrate auth audit events (`USER_REGISTERED`, `EMAIL_VERIFICATION_SENT`, `USER_LOGIN`, `FAILED_LOGIN`, `USER_LOGOUT`).
+13. [ ] **Phase 12 — Realtime Module**: Implement Socket.IO for online users, live task updates, and real-time comments.
 
 ---
 

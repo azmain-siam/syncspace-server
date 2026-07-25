@@ -33,6 +33,7 @@ model User {
   projectMembers      ProjectMember[]
   notifications       Notification[]      @relation("UserNotifications")
   actorNotifications  Notification[]      @relation("ActorNotifications")
+  auditLogs           AuditLog[]          @relation("UserAuditLogs")
 }
 
 model Workspace {
@@ -355,5 +356,22 @@ enum NotificationType {
   TASK_DUE
   WORKSPACE_INVITATION
   PROJECT_INVITATION
+}
+
+model AuditLog {
+  id        String   @id @default(uuid())
+  actorId   String?
+  action    String
+  ipAddress String?
+  userAgent String?
+  metadata  Json?
+
+  createdAt DateTime @default(now())
+
+  actor User? @relation("UserAuditLogs", fields: [actorId], references: [id], onDelete: SetNull)
+
+  @@index([actorId])
+  @@index([action])
+  @@index([createdAt])
 }
 

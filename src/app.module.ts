@@ -24,6 +24,7 @@ import { WorkspaceModule } from './module/workspace/workspace.module';
 
 import { EventEmitterModule } from '@nestjs/event-emitter';
 import { NotificationModule } from './module/notification/notification.module';
+import { AuditLogModule } from './module/audit/audit-log.module';
 
 @Module({
   imports: [
@@ -65,6 +66,7 @@ import { NotificationModule } from './module/notification/notification.module';
     AttachmentModule,
     TaskLinkModule,
     NotificationModule,
+    AuditLogModule,
   ],
   providers: [
     { provide: APP_INTERCEPTOR, useClass: ResponseInterceptor },

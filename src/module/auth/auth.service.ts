@@ -8,6 +8,8 @@ import { JwtService } from '@nestjs/jwt';
 import { User } from '@prisma/client';
 import * as bcrypt from 'bcrypt';
 import { PrismaService } from '../prisma/prisma.service';
+import { AuditLogService } from '../audit/audit-log.service';
+import { AuditAction } from '../audit/enums/audit-action.enum';
 import { BCRYPT_SALT_ROUNDS } from './auth.constants';
 import { LoginDto } from './dto/login.dto';
 import { RegisterDto } from './dto/register.dto';
@@ -19,6 +21,7 @@ export class AuthService {
     private prisma: PrismaService,
     private configService: ConfigService,
     private jwtService: JwtService,
+    private auditLogService: AuditLogService,
   ) {}
 
   // Register
@@ -52,6 +55,25 @@ export class AuthService {
 
     await this.storeHashedToken(user.id, tokens.refreshToken);
 
+    // Audit Logs
+    await this.auditLogService.log({
+      actorId: user.id,
+      action: AuditAction.USER_REGISTERED,
+      metadata: {
+        userId: user.id,
+        email: user.email,
+      },
+    });
+
+    await this.auditLogService.log({
+      actorId: user.id,
+      action: AuditAction.EMAIL_VERIFICATION_SENT,
+      metadata: {
+        userId: user.id,
+        email: user.email,
+      },
+    });
+
     return {
       user: this.sanitizeUser(user),
       tokens,
@@ -67,18 +89,42 @@ export class AuthService {
     });
 
     if (!user) {
+      await this.auditLogService.log({
+        action: AuditAction.FAILED_LOGIN,
+        metadata: {
+          email: dto.email,
+          reason: 'User not found',
+        },
+      });
       throw new UnauthorizedException('Invalid credentials');
     }
 
     const isPasswordMatched = await bcrypt.compare(dto.password, user.password);
 
     if (!isPasswordMatched) {
+      await this.auditLogService.log({
+        actorId: user.id,
+        action: AuditAction.FAILED_LOGIN,
+        metadata: {
+          email: dto.email,
+          reason: 'Invalid password',
+        },
+      });
       throw new UnauthorizedException('Invalid credentials');
     }
 
     const tokens = await this.generateTokens(user.id, user.email);
 
     await this.storeHashedToken(user.id, tokens.refreshToken);
+
+    await this.auditLogService.log({
+      actorId: user.id,
+      action: AuditAction.USER_LOGIN,
+      metadata: {
+        userId: user.id,
+        email: user.email,
+      },
+    });
 
     return {
       user: this.sanitizeUser(user),
@@ -110,6 +156,14 @@ export class AuthService {
     await this.prisma.user.update({
       where: { id: userId },
       data: { hashedRefreshToken: null },
+    });
+
+    await this.auditLogService.log({
+      actorId: userId,
+      action: AuditAction.USER_LOGOUT,
+      metadata: {
+        userId,
+      },
     });
 
     return null;
