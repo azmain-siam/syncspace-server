@@ -258,7 +258,8 @@ Legend:
 11. [x] **Centralized Email Infrastructure Module**: Implement production-ready `EmailModule` with Nodemailer, Handlebars templates, Joi env validation, and SOLID provider abstraction.
 12. [x] **Platform Audit Logging Infrastructure**: Implement `AuditLog` table, `AuditLogService`, `AuditAction` enum, and integrate auth audit events (`USER_REGISTERED`, `EMAIL_VERIFICATION_SENT`, `USER_LOGIN`, `FAILED_LOGIN`, `USER_LOGOUT`).
 13. [x] **Email Verification System**: Implement `VerificationToken` table (SHA-256 token hashing), single-use 24h tokens, `GET /auth/verify-email`, `POST /auth/resend-verification`, login verification rejection, and Prisma transaction operations.
-14. [ ] **Phase 12 — Realtime Module**: Implement Socket.IO for online users, live task updates, and real-time comments.
+14. [x] **Forgot Password & Reset Password Flow**: Implement `POST /auth/forgot-password` (anti-enumeration), `POST /auth/reset-password`, 30-minute single-use SHA-256 tokens, refresh token revocation, and audit logging (`PASSWORD_RESET_REQUESTED`, `PASSWORD_RESET_COMPLETED`, `PASSWORD_RESET_TOKEN_INVALID`, `PASSWORD_RESET_TOKEN_EXPIRED`).
+15. [ ] **Phase 12 — Realtime Module**: Implement Socket.IO for online users, live task updates, and real-time comments.
 
 ---
 

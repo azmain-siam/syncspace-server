@@ -4,8 +4,10 @@ import { CurrentUser } from 'src/common/decorators/get-user.decorator';
 import { ResponseMessage } from 'src/common/decorators/response-message.decorator';
 import type { User } from 'src/common/interfaces/user.interface';
 import { AuthService } from './auth.service';
+import { ForgotPasswordDto } from './dto/forgot-password.dto';
 import { LoginDto } from './dto/login.dto';
 import { RegisterDto } from './dto/register.dto';
+import { ResetPasswordDto } from './dto/reset-password.dto';
 import { VerifyEmailDto } from './dto/verify-email.dto';
 import { JwtAuthGuard } from './guards/jwt-auth.guard';
 import { RefreshTokenGuard } from './guards/refresh-auth.guard';
@@ -41,6 +43,20 @@ export class AuthController {
   @ApiOperation({ summary: 'Login user' })
   login(@Body() dto: LoginDto) {
     return this.authService.login(dto);
+  }
+
+  @Post('forgot-password')
+  @ResponseMessage('If an account exists, a password reset link has been sent.')
+  @ApiOperation({ summary: 'Request password reset email' })
+  forgotPassword(@Body() dto: ForgotPasswordDto) {
+    return this.authService.forgotPassword(dto);
+  }
+
+  @Post('reset-password')
+  @ResponseMessage('Password reset successfully')
+  @ApiOperation({ summary: 'Reset password using token' })
+  resetPassword(@Body() dto: ResetPasswordDto) {
+    return this.authService.resetPassword(dto);
   }
 
   @Post('refresh')
