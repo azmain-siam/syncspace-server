@@ -1,11 +1,16 @@
 import { Request } from 'express';
+import * as fs from 'fs';
 import multer, { diskStorage, StorageEngine } from 'multer';
 import { extname } from 'path';
 
 export const storageConfig = (
   folder: string = './public/uploads',
-): StorageEngine =>
-  diskStorage({
+): StorageEngine => {
+  if (!fs.existsSync(folder)) {
+    fs.mkdirSync(folder, { recursive: true });
+  }
+
+  return diskStorage({
     destination: folder,
     filename: (
       req: Request,
@@ -17,5 +22,6 @@ export const storageConfig = (
       callback(null, `${uniqueSuffix}${ext}`);
     },
   });
+};
 
 export const memoryStorageConfig = multer.memoryStorage();

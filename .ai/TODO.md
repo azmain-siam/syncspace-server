@@ -136,9 +136,9 @@ Legend:
 
 ## Comment
 
-- [ ] Create
-- [ ] Update
-- [ ] Delete
+- [x] Create
+- [x] Update
+- [x] Delete
 
 ---
 
@@ -146,9 +146,10 @@ Legend:
 
 ## Attachments
 
-- [ ] Upload
-- [ ] Delete
-- [ ] Preview
+- [x] Upload (`POST /tasks/:taskId/attachments`)
+- [x] List (`GET /tasks/:taskId/attachments`)
+- [x] Delete (`DELETE /tasks/:taskId/attachments/:attachmentId`)
+- [x] File Storage & Serve Static Files
 
 ---
 
@@ -215,10 +216,10 @@ Legend:
 - [x] **REST Pluralization**: Rename `@Controller('workspaces/:workspaceId/project')` to `@Controller('workspaces/:workspaceId/projects')`.
 - [x] **DTO Validation Hardening**: Update `LoginDto` and `RegisterDto` to validate email using `@IsEmail()` instead of `@IsString()`.
 - [x] **Centralized Activity Service**: Extract `createActivityLog()` into a shared `ActivityService` so `ProjectService` and future modules reuse a single service.
-- [ ] **Consolidate Activity Models**: Remove unused `ActivityLog` model or align it with `WorkspaceActivity`.
-- [ ] **Clean Dead Code**: Remove unused `Role` enum, `RolesGuard`, `AppException`, `RefreshTokenDto`, `UpdateWorkspaceDto`, `TrimPipe`.
-- [ ] **Email Module**: Wrap `EmailService` inside an `EmailModule` export.
-- [ ] **Logger Initialization**: Enable Pino logger in `app.module.ts` and `main.ts`, replacing `console.log`.
+- [x] **Consolidate Activity Models**: Remove unused `ActivityLog` model from Prisma schema.
+- [x] **Clean Dead Code**: Remove unused `Role` enum, `RolesGuard`, `AppException`, `TrimPipe`.
+- [x] **Email Module**: Wrap `EmailService` inside an `EmailModule` export.
+- [x] **Logger Initialization**: Enable Pino logger in `app.module.ts` and `main.ts`, replacing `console.log`.
 
 ---
 
@@ -243,19 +244,24 @@ Legend:
 5. [x] **Phase 6 — Board & Column API Modules**: Implement Board & BoardColumn CRUD services and controllers.
 6. [x] **Phase 7 — Task API Module**: Implement Task CRUD, Move Task across columns, Assign Member, Priority & Status updates.
 7. [x] **Backend Architectural Refinement**: Execute items tracked in `.ai/ARCHITECTURAL_REVIEW.md`.
-8. [x] **Phase 8 — Comment API Module**: Implement Comment CRUD on tasks.
+8. [x] **Phase 8 — Comment API Module**: Implement Comment CRUD on tasks with cursor pagination, mentions, and edit history.
+9. [x] **Phase 9 — Attachment & File Upload Module**: Implement Task Attachment upload, list, delete, and static file serving.
+10. [ ] **Phase 11 — Notification Module**: Implement event-driven notifications for task assignments, mentions, due reminders, and invitations.
 
 ---
 
 # Next Feature (What to do next)
 
 ```
-Phase 8 — Comment API Module (Task Comments)
+Phase 11 — Event-Driven Notification Module
 
-Step 1: Create `src/module/comment` with `CommentService`, `CommentController`, `dto` (CreateCommentDto, UpdateCommentDto), and `comment.module.ts`.
-Step 2: Implement Comment CRUD under `/workspaces/:workspaceId/projects/:projectId/boards/:boardId/columns/:columnId/tasks/:taskId/comments`.
-Step 3: Verify commenter workspace membership and task existence.
-Step 4: Emit activity events (`COMMENT_CREATED`, `COMMENT_UPDATED`, `COMMENT_DELETED`) via ActivityService.
+Step 1: Create `src/module/notification` with `NotificationService`, `NotificationController`, `NotificationModule`, and Prisma schema model for `Notification`.
+Step 2: Add Notification Prisma Model (`id`, `userId`, `actorId`, `type`, `title`, `message`, `link`, `isRead`, `createdAt`).
+Step 3: Listen to application events (task assigned, comment mention, task due, workspace invitation) and persist user notifications.
+Step 4: Implement REST Endpoints:
+        - GET   /notifications        (List current user's notifications, paginated)
+        - PATCH /notifications/:id/read  (Mark single notification as read)
+        - PATCH /notifications/read-all  (Mark all user notifications as read)
 ```
 
 ---

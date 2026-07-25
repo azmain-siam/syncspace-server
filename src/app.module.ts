@@ -4,10 +4,12 @@ import { ConfigModule, ConfigService } from '@nestjs/config';
 import { APP_GUARD, APP_INTERCEPTOR } from '@nestjs/core';
 import { JwtModule } from '@nestjs/jwt';
 import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler';
+import { LoggerModule } from 'nestjs-pino';
 import { ResponseInterceptor } from './common/interceptors/response.interceptor';
 import configuration from './config/configuration';
 import { validationSchema } from './config/validation';
 import { ActivityModule } from './module/activity/activity.module';
+import { AttachmentModule } from './module/attachment/attachment.module';
 import { AuthModule } from './module/auth/auth.module';
 import { BoardModule } from './module/board/board.module';
 import { ColumnModule } from './module/column/column.module';
@@ -26,6 +28,21 @@ import { WorkspaceModule } from './module/workspace/workspace.module';
       isGlobal: true,
       load: [configuration],
       validationSchema,
+    }),
+    LoggerModule.forRoot({
+      pinoHttp: {
+        level: process.env.NODE_ENV === 'production' ? 'info' : 'debug',
+        transport:
+          process.env.NODE_ENV !== 'production'
+            ? {
+                target: 'pino-pretty',
+                options: {
+                  colorize: true,
+                  singleLine: true,
+                },
+              }
+            : undefined,
+      },
     }),
     ThrottlerModule.forRoot({ throttlers: [{ ttl: 60000, limit: 100 }] }),
     MailerModule.forRootAsync({
@@ -52,6 +69,7 @@ import { WorkspaceModule } from './module/workspace/workspace.module';
     ColumnModule,
     TaskModule,
     CommentModule,
+    AttachmentModule,
   ],
   providers: [
     { provide: APP_INTERCEPTOR, useClass: ResponseInterceptor },
