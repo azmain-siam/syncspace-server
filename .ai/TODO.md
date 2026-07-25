@@ -255,7 +255,8 @@ Legend:
 8. [x] **Phase 8 — Comment API Module**: Implement Comment CRUD on tasks with cursor pagination, mentions, and edit history.
 9. [x] **Phase 9 — Attachment & File Upload Module**: Implement Task Attachment upload, list, delete, and static file serving.
 10. [x] **Phase 11 — Notification Module**: Implement event-driven notifications for task assignments, mentions, and invitations.
-11. [ ] **Phase 12 — Realtime Module**: Implement Socket.IO for online users, live task updates, and real-time comments.
+11. [x] **Centralized Email Infrastructure Module**: Implement production-ready `EmailModule` with Nodemailer, Handlebars templates, Joi env validation, and SOLID provider abstraction.
+12. [ ] **Phase 12 — Realtime Module**: Implement Socket.IO for online users, live task updates, and real-time comments.
 
 ---
 

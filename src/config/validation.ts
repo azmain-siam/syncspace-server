@@ -15,8 +15,12 @@ export const validationSchema = Joi.object({
   JWT_ACCESS_EXPIRES_IN: Joi.string().default('1d'),
   JWT_REFRESH_EXPIRES_IN: Joi.string().default('90d'),
 
-  EMAIL_USER: Joi.string().email().required(),
+  EMAIL_HOST: Joi.string().default('smtp.gmail.com'),
+  EMAIL_PORT: Joi.number().default(587),
+  EMAIL_SECURE: Joi.boolean().default(false),
+  EMAIL_USER: Joi.string().required(),
   EMAIL_PASS: Joi.string().required(),
+  EMAIL_FROM: Joi.string().default('SyncSpace <noreply@syncspace.com>'),
 
   CLOUDINARY_CLOUD_NAME: Joi.string().required().allow(''),
   CLOUDINARY_API_KEY: Joi.string().required().allow(''),
