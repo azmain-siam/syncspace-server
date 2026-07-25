@@ -227,13 +227,15 @@ model Comment {
 }
 
 model Attachment {
-  id         String @id @default(uuid())
-  taskId     String
-  fileName   String
-  fileUrl    String
-  fileSize   Int
-  mimeType   String
-  uploadedBy String
+  id              String          @id @default(uuid())
+  taskId          String
+  fileName        String
+  fileUrl         String
+  storageProvider StorageProvider @default(CLOUDINARY)
+  storageKey      String          @default("")
+  fileSize        Int
+  mimeType        String
+  uploadedBy      String
 
   createdAt DateTime @default(now())
 
@@ -320,3 +322,8 @@ enum LinkType {
   WEBSITE
   OTHER
 }
+
+enum StorageProvider {
+  CLOUDINARY
+}
+

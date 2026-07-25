@@ -6,6 +6,7 @@ import { JwtModule } from '@nestjs/jwt';
 import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler';
 import { LoggerModule } from 'nestjs-pino';
 import { ResponseInterceptor } from './common/interceptors/response.interceptor';
+import { StorageModule } from './common/storage/storage.module';
 import configuration from './config/configuration';
 import { validationSchema } from './config/validation';
 import { ActivityModule } from './module/activity/activity.module';
@@ -60,6 +61,7 @@ import { WorkspaceModule } from './module/workspace/workspace.module';
       }),
     }),
     PrismaModule,
+    StorageModule,
     UserModule,
     AuthModule,
     EmailModule,

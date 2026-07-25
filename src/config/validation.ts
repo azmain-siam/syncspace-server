@@ -17,4 +17,8 @@ export const validationSchema = Joi.object({
 
   EMAIL_USER: Joi.string().email().required(),
   EMAIL_PASS: Joi.string().required(),
+
+  CLOUDINARY_CLOUD_NAME: Joi.string().required().allow(''),
+  CLOUDINARY_API_KEY: Joi.string().required().allow(''),
+  CLOUDINARY_API_SECRET: Joi.string().required().allow(''),
 });
