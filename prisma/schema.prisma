@@ -9,6 +9,7 @@ datasource db {
 // MODELS
 model User {
   id                 String  @id @default(uuid())
+  username           String  @unique
   name               String
   email              String  @unique
   phone              String? @unique
@@ -27,7 +28,7 @@ model User {
   createdTasks        Task[]              @relation("TaskCreator")
   comments            Comment[]
   uploadedFiles       Attachment[]
-  activities          ActivityLog[]
+  taskLinks           TaskLink[]
   workspaceActivities WorkspaceActivity[]
   projectMembers      ProjectMember[]
 }
@@ -48,10 +49,10 @@ model Workspace {
   owner               User                @relation("WorkspaceOwner", fields: [ownerId], references: [id])
   members             WorkspaceMember[]
   projects            Project[]
-  activities          ActivityLog[]
   workspaceActivities WorkspaceActivity[]
 
   @@index([ownerId])
+  @@index([deletedAt])
 }
 
 model WorkspaceMember {
@@ -122,6 +123,8 @@ model Project {
   @@index([workspaceId])
   @@index([status])
   @@index([createdById])
+  @@index([workspaceId, deletedAt])
+  @@index([workspaceId, status])
 }
 
 model ProjectMember {
@@ -190,7 +193,7 @@ model Task {
   creator             User                @relation("TaskCreator", fields: [createdBy], references: [id])
   comments            Comment[]
   attachments         Attachment[]
-  activities          ActivityLog[]
+  links               TaskLink[]
   workspaceActivities WorkspaceActivity[]
 
   @@unique([columnId, order])
@@ -200,21 +203,27 @@ model Task {
   @@index([priority])
   @@index([status])
   @@index([dueDate])
+  @@index([columnId, deletedAt])
 }
 
 model Comment {
-  id      String @id @default(uuid())
-  taskId  String
-  userId  String
-  content String
+  id        String    @id @default(uuid())
+  taskId    String
+  userId    String
+  content   String
+  isEdited  Boolean   @default(false)
+  editedAt  DateTime?
+  deletedAt DateTime?
 
   createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   task Task @relation(fields: [taskId], references: [id], onDelete: Cascade)
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([taskId])
   @@index([userId])
+  @@index([taskId, deletedAt, createdAt])
 }
 
 model Attachment {
@@ -235,24 +244,22 @@ model Attachment {
   @@index([uploadedBy])
 }
 
-model ActivityLog {
-  id          String         @id @default(uuid())
-  workspaceId String
-  userId      String
-  taskId      String?
-  action      ActivityAction
-  description String
+model TaskLink {
+  id          String   @id @default(uuid())
+  taskId      String
+  createdById String
+  title       String
+  url         String
+  type        LinkType
 
   createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
-  workspace Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
-  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
-  task      Task?     @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  task      Task @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  createdBy User @relation(fields: [createdById], references: [id])
 
-  @@index([workspaceId])
-  @@index([userId])
   @@index([taskId])
-  @@index([createdAt])
+  @@index([createdById])
 }
 
 // ENUMS
@@ -303,11 +310,13 @@ enum TaskStatus {
   DONE
 }
 
-enum ActivityAction {
-  CREATE
-  UPDATE
-  DELETE
-  MOVE
-  ASSIGN
-  COMMENT
+enum LinkType {
+  FIGMA
+  GITHUB
+  GOOGLE_DOC
+  NOTION
+  SWAGGER
+  LOOM
+  WEBSITE
+  OTHER
 }

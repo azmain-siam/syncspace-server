@@ -1,14 +1,19 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { User } from 'src/common/interfaces/user.interface';
+import { slugify } from 'src/common/utils/slug.util';
+import { ActivityService } from '../activity/activity.service';
+import { ActivityAction } from '../activity/enums/activity-action.enum';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateProjectDto } from './dto/create-project.dto';
 import { UpdateProjectDto } from './dto/update-project.dto';
-import { ProjectActivityActions } from './enums/project-activity-action.enum';
 import { ProjectStatus } from './enums/project-status.enum';
 
 @Injectable()
 export class ProjectService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly activityService: ActivityService,
+  ) {}
 
   // Create project
   async createProject(
@@ -20,7 +25,7 @@ export class ProjectService {
       const project = await tx.project.create({
         data: {
           workspaceId,
-          slug: dto.title.toLowerCase().replace(/ /g, '-'),
+          slug: slugify(dto.title),
           title: dto.title,
           description: dto.description,
           color: dto.color,
@@ -31,16 +36,14 @@ export class ProjectService {
         },
       });
 
-      await tx.workspaceActivity.create({
-        data: {
-          workspaceId,
-          actorId: currentUserId,
+      await this.activityService.createActivityLog(tx, {
+        workspaceId,
+        actorId: currentUserId,
+        projectId: project.id,
+        action: ActivityAction.PROJECT_CREATED,
+        description: `Created project ${project.title}`,
+        metadata: {
           projectId: project.id,
-          action: ProjectActivityActions.PROJECT_CREATED,
-          description: `Created project ${project.title}`,
-          metadata: {
-            projectId: project.id,
-          },
         },
       });
 
@@ -49,20 +52,19 @@ export class ProjectService {
   }
 
   // Get workspace projects
-  async getWorkspaceProject(workspaceId: string) {
-    const projects = await this.prisma.project.findMany({
+  async getWorkspaceProjects(workspaceId: string) {
+    return this.prisma.project.findMany({
       where: {
         workspaceId,
         status: {
           not: ProjectStatus.ARCHIVED,
         },
+        deletedAt: null,
       },
       orderBy: {
         createdAt: 'desc',
       },
     });
-
-    return projects;
   }
 
   // Get project
@@ -71,6 +73,7 @@ export class ProjectService {
       where: {
         id: projectId,
         workspaceId,
+        deletedAt: null,
       },
     });
     if (!project) throw new NotFoundException('Project not found');
@@ -87,16 +90,14 @@ export class ProjectService {
   ) {
     const project = await this.getProject(workspaceId, projectId);
 
-    return await this.prisma.$transaction(async (tx) => {
+    return this.prisma.$transaction(async (tx) => {
       const updatedProject = await tx.project.update({
         where: {
           id: projectId,
         },
         data: {
           title: dto.title ?? project.title,
-          slug: dto.title
-            ? dto.title.toLowerCase().replace(/ /g, '-')
-            : project.slug,
+          slug: dto.title ? slugify(dto.title) : project.slug,
           description: dto.description ?? project.description,
           color: dto.color ?? project.color,
           priority: dto.priority ?? project.priority,
@@ -105,16 +106,14 @@ export class ProjectService {
         },
       });
 
-      await tx.workspaceActivity.create({
-        data: {
-          workspaceId,
-          actorId: currentUser.id,
+      await this.activityService.createActivityLog(tx, {
+        workspaceId,
+        actorId: currentUser.id,
+        projectId: updatedProject.id,
+        action: ActivityAction.PROJECT_UPDATED,
+        description: `${currentUser.name} updated project ${updatedProject.title}`,
+        metadata: {
           projectId: updatedProject.id,
-          action: ProjectActivityActions.PROJECT_UPDATED,
-          description: `${currentUser.name} Updated project ${updatedProject.title}`,
-          metadata: {
-            projectId: updatedProject.id,
-          },
         },
       });
 
@@ -130,7 +129,7 @@ export class ProjectService {
   ) {
     await this.getProject(workspaceId, projectId);
 
-    return await this.prisma.$transaction(async (tx) => {
+    return this.prisma.$transaction(async (tx) => {
       const archivedProject = await tx.project.update({
         where: {
           id: projectId,
@@ -140,16 +139,14 @@ export class ProjectService {
         },
       });
 
-      await tx.workspaceActivity.create({
-        data: {
-          workspaceId,
-          actorId: currentUser.id,
+      await this.activityService.createActivityLog(tx, {
+        workspaceId,
+        actorId: currentUser.id,
+        projectId: archivedProject.id,
+        action: ActivityAction.PROJECT_ARCHIVED,
+        description: `${currentUser.name} archived project ${archivedProject.title}`,
+        metadata: {
           projectId: archivedProject.id,
-          action: ProjectActivityActions.PROJECT_ARCHIVED,
-          description: `${currentUser.name} Archived project ${archivedProject.title}`,
-          metadata: {
-            projectId: archivedProject.id,
-          },
         },
       });
 
