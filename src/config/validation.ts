@@ -31,4 +31,8 @@ export const validationSchema = Joi.object({
   GOOGLE_CALLBACK_URL: Joi.string().default(
     'http://localhost:5000/api/v1/auth/google/callback',
   ),
+
+  REDIS_HOST: Joi.string().default('localhost'),
+  REDIS_PORT: Joi.number().default(6379),
+  REDIS_PASSWORD: Joi.string().allow('').default(''),
 });

@@ -261,7 +261,8 @@ Legend:
 14. [x] **Forgot Password & Reset Password Flow**: Implement `POST /auth/forgot-password` (anti-enumeration), `POST /auth/reset-password`, 30-minute single-use SHA-256 tokens, refresh token revocation, and audit logging (`PASSWORD_RESET_REQUESTED`, `PASSWORD_RESET_COMPLETED`, `PASSWORD_RESET_TOKEN_INVALID`, `PASSWORD_RESET_TOKEN_EXPIRED`).
 15. [x] **Phase X — Token-Based Workspace Invitation System**: Implement `WorkspaceInvitation` model (7-day SHA-256 tokens), `POST /workspaces/:workspaceId/invitations`, `GET /workspace-invitations/validate`, `POST /workspace-invitations/accept` (transaction member creation & email verification check), `POST /workspace-invitations/decline`, `DELETE /workspaces/:workspaceId/invitations/:id`, and separated WorkspaceActivity & AuditLog logging.
 16. [x] **Google OAuth Authentication**: Implement `OAuthAccount` model, `GoogleStrategy`, `GoogleAuthGuard`, automatic account linking, JWT issuance, `GET /auth/google`, `GET /auth/google/callback`, and audit logging (`GOOGLE_LOGIN`, `GOOGLE_ACCOUNT_CREATED`, `GOOGLE_ACCOUNT_LINKED`).
-17. [ ] **Phase 12 — Realtime Module**: Implement Socket.IO for online users, live task updates, and real-time comments.
+17. [x] **Background Email Jobs (BullMQ + Redis)**: Implement `QueueModule` (`@nestjs/bullmq`), `EmailQueueService`, `EmailProcessor`, exponential backoff retries (3 attempts: 1s, 2s, 4s), and refactor `AuthService` and `WorkspaceInvitationService` for non-blocking asynchronous email delivery.
+18. [ ] **Phase 12 — Realtime Module**: Implement Socket.IO for online users, live task updates, and real-time comments.
 
 ---
 

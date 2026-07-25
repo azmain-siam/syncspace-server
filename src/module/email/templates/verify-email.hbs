@@ -1,31 +1,75 @@
-<!DOCTYPE html>
 <html>
-<head>
-  <meta charset="utf-8">
-  <title>Verify Your Email - SyncSpace</title>
-  <style>
-    body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #f4f7f6; margin: 0; padding: 20px; color: #333; }
-    .card { max-width: 600px; margin: 0 auto; background: #ffffff; padding: 30px; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.05); }
-    .header { text-align: center; border-bottom: 1px solid #eeeeee; padding-bottom: 20px; margin-bottom: 20px; }
-    .brand { font-size: 24px; font-weight: bold; color: #4F46E5; }
-    .btn { display: inline-block; padding: 12px 24px; background-color: #4F46E5; color: #ffffff; text-decoration: none; border-radius: 6px; font-weight: 600; margin-top: 20px; }
-    .footer { font-size: 12px; color: #888888; text-align: center; margin-top: 30px; border-top: 1px solid #eeeeee; padding-top: 15px; }
-  </style>
-</head>
-<body>
-  <div class="card">
-    <div class="header">
-      <div class="brand">SyncSpace</div>
+  <head>
+    <meta charset='utf-8' />
+    <title>Verify Your Email - SyncSpace</title>
+    <style>
+      body {
+        font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        background-color: #f4f7f6;
+        margin: 0;
+        padding: 20px;
+        color: #333;
+      }
+      .card {
+        max-width: 600px;
+        margin: 0 auto;
+        background: #ffffff;
+        padding: 30px;
+        border-radius: 8px;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+      }
+      .header {
+        text-align: center;
+        border-bottom: 1px solid #eeeeee;
+        padding-bottom: 20px;
+        margin-bottom: 20px;
+      }
+      .brand {
+        font-size: 24px;
+        font-weight: bold;
+        color: #4f46e5;
+      }
+      .btn {
+        display: inline-block;
+        padding: 12px 24px;
+        background-color: #4f46e5;
+        color: #ffffff;
+        text-decoration: none;
+        border-radius: 6px;
+        font-weight: 600;
+        margin-top: 20px;
+      }
+      .footer {
+        font-size: 12px;
+        color: #888888;
+        text-align: center;
+        margin-top: 30px;
+        border-top: 1px solid #eeeeee;
+        padding-top: 15px;
+      }
+    </style>
+  </head>
+  <body>
+    <div class='card'>
+      <div class='header'>
+        <div class='brand'>SyncSpace</div>
+      </div>
+      <h2>Hello {{name}},</h2>
+      <p>Thank you for signing up for SyncSpace. Please verify your email
+        address by clicking the button below:</p>
+      <div style='text-align: center; color: #FFFFFF;'>
+        <a href='{{verificationUrl}}' class='btn' target='_blank'>Verify Email
+          Address</a>
+      </div>
+      <p style='margin-top: 20px; font-size: 13px; color: #666;'>Or copy and
+        paste this link in your browser:<br /><a
+          href='{{verificationUrl}}'
+        >{{verificationUrl}}</a></p>
+      <div class='footer'>
+        &copy;
+        {{year}}
+        SyncSpace Inc. All rights reserved.
+      </div>
     </div>
-    <h2>Hello {{name}},</h2>
-    <p>Thank you for signing up for SyncSpace. Please verify your email address by clicking the button below:</p>
-    <div style="text-align: center;">
-      <a href="{{verificationUrl}}" class="btn" target="_blank">Verify Email Address</a>
-    </div>
-    <p style="margin-top: 20px; font-size: 13px; color: #666;">Or copy and paste this link in your browser:<br><a href="{{verificationUrl}}">{{verificationUrl}}</a></p>
-    <div class="footer">
-      &copy; {{year}} SyncSpace Inc. All rights reserved.
-    </div>
-  </div>
-</body>
+  </body>
 </html>

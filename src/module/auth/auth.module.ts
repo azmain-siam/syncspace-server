@@ -2,7 +2,7 @@ import { Module } from '@nestjs/common';
 import { JwtModule } from '@nestjs/jwt';
 import { PassportModule } from '@nestjs/passport';
 import { AuditLogModule } from '../audit/audit-log.module';
-import { EmailModule } from '../email/email.module';
+import { QueueModule } from '../queue/queue.module';
 import { AuthController } from './auth.controller';
 import { AuthService } from './auth.service';
 import { GoogleStrategy } from './strategies/google.strategy';
@@ -14,7 +14,7 @@ import { RefreshStrategy } from './strategies/refresh.strategy';
     PassportModule,
     JwtModule.register({}),
     AuditLogModule,
-    EmailModule,
+    QueueModule,
   ],
   providers: [AuthService, JwtStrategy, RefreshStrategy, GoogleStrategy],
   controllers: [AuthController],

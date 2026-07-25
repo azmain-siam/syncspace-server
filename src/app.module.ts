@@ -23,8 +23,9 @@ import { UserModule } from './module/user/user.module';
 import { WorkspaceModule } from './module/workspace/workspace.module';
 
 import { EventEmitterModule } from '@nestjs/event-emitter';
-import { NotificationModule } from './module/notification/notification.module';
 import { AuditLogModule } from './module/audit/audit-log.module';
+import { NotificationModule } from './module/notification/notification.module';
+import { QueueModule } from './module/queue/queue.module';
 
 @Module({
   imports: [
@@ -56,6 +57,7 @@ import { AuditLogModule } from './module/audit/audit-log.module';
     UserModule,
     AuthModule,
     EmailModule,
+    QueueModule,
     WorkspaceModule,
     ProjectModule,
     ActivityModule,

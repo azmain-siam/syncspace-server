@@ -11,8 +11,8 @@ import { generateSecureToken, hashToken } from 'src/common/utils/token.util';
 import { ActivityService } from '../activity/activity.service';
 import { AuditLogService } from '../audit/audit-log.service';
 import { AuditAction } from '../audit/enums/audit-action.enum';
-import { EmailService } from '../email/email.service';
 import { PrismaService } from '../prisma/prisma.service';
+import { EmailQueueService } from '../queue/email/email.queue.service';
 import { AcceptInvitationDto } from './dto/accept-invitation.dto';
 import { CreateInvitationDto } from './dto/create-invitation.dto';
 import { DeclineInvitationDto } from './dto/decline-invitation.dto';
@@ -22,7 +22,7 @@ export class WorkspaceInvitationService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly configService: ConfigService,
-    private readonly emailService: EmailService,
+    private readonly emailQueueService: EmailQueueService,
     private readonly activityService: ActivityService,
     private readonly auditLogService: AuditLogService,
   ) {}
@@ -111,12 +111,12 @@ export class WorkspaceInvitationService {
     );
     const invitationUrl = `${baseUrl}/invitations/accept?token=${rawToken}`;
 
-    await this.emailService.sendWorkspaceInvitation(
-      dto.email,
-      inviterMember.user.name,
-      workspace.name,
+    await this.emailQueueService.sendWorkspaceInvitation({
+      to: dto.email,
+      inviterName: inviterMember.user.name,
+      workspaceName: workspace.name,
       invitationUrl,
-    );
+    });
 
     // Workspace Activity & Platform Audit Log
     await this.activityService.createActivityLog(undefined, {

@@ -31,4 +31,9 @@ export default () => ({
       process.env.GOOGLE_CALLBACK_URL ||
       'http://localhost:5000/api/v1/auth/google/callback',
   },
+  redis: {
+    host: process.env.REDIS_HOST || 'localhost',
+    port: parseInt(process.env.REDIS_PORT || '6379', 10),
+    password: process.env.REDIS_PASSWORD || undefined,
+  },
 });

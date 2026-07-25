@@ -15,8 +15,8 @@ import * as bcrypt from 'bcrypt';
 import { generateSecureToken, hashToken } from '../../common/utils/token.util';
 import { AuditLogService } from '../audit/audit-log.service';
 import { AuditAction } from '../audit/enums/audit-action.enum';
-import { EmailService } from '../email/email.service';
 import { PrismaService } from '../prisma/prisma.service';
+import { EmailQueueService } from '../queue/email/email.queue.service';
 import { BCRYPT_SALT_ROUNDS } from './auth.constants';
 import { ForgotPasswordDto } from './dto/forgot-password.dto';
 import { LoginDto } from './dto/login.dto';
@@ -32,7 +32,7 @@ export class AuthService {
     private configService: ConfigService,
     private jwtService: JwtService,
     private auditLogService: AuditLogService,
-    private emailService: EmailService,
+    private emailQueueService: EmailQueueService,
   ) {}
 
   // Register user and send email verification token
@@ -86,11 +86,11 @@ export class AuthService {
     );
     const verificationUrl = `${baseUrl}/auth/verify-email?token=${rawToken}`;
 
-    await this.emailService.sendVerificationEmail(
-      user.email,
-      user.name,
+    await this.emailQueueService.sendVerificationEmail({
+      to: user.email,
+      name: user.name,
       verificationUrl,
-    );
+    });
 
     // Audit Logs
     await this.auditLogService.log({
@@ -219,11 +219,11 @@ export class AuthService {
     );
     const verificationUrl = `${baseUrl}/auth/verify-email?token=${rawToken}`;
 
-    await this.emailService.sendVerificationEmail(
-      user.email,
-      user.name,
+    await this.emailQueueService.sendVerificationEmail({
+      to: user.email,
+      name: user.name,
       verificationUrl,
-    );
+    });
 
     await this.auditLogService.log({
       actorId: userId,
@@ -282,11 +282,11 @@ export class AuthService {
     );
     const resetUrl = `${baseUrl}/reset-password?token=${rawToken}`;
 
-    await this.emailService.sendForgotPasswordEmail(
-      user.email,
-      user.name,
+    await this.emailQueueService.sendForgotPasswordEmail({
+      to: user.email,
+      name: user.name,
       resetUrl,
-    );
+    });
 
     await this.auditLogService.log({
       actorId: user.id,
