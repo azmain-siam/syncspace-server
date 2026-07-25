@@ -28,6 +28,7 @@ model User {
   createdTasks        Task[]              @relation("TaskCreator")
   comments            Comment[]
   uploadedFiles       Attachment[]
+  taskLinks           TaskLink[]
   workspaceActivities WorkspaceActivity[]
   projectMembers      ProjectMember[]
 }
@@ -192,6 +193,7 @@ model Task {
   creator             User                @relation("TaskCreator", fields: [createdBy], references: [id])
   comments            Comment[]
   attachments         Attachment[]
+  links               TaskLink[]
   workspaceActivities WorkspaceActivity[]
 
   @@unique([columnId, order])
@@ -242,6 +244,24 @@ model Attachment {
   @@index([uploadedBy])
 }
 
+model TaskLink {
+  id          String   @id @default(uuid())
+  taskId      String
+  createdById String
+  title       String
+  url         String
+  type        LinkType
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  task      Task @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  createdBy User @relation(fields: [createdById], references: [id])
+
+  @@index([taskId])
+  @@index([createdById])
+}
+
 // ENUMS
 enum WorkspaceRole {
   OWNER
@@ -288,4 +308,15 @@ enum TaskStatus {
   IN_PROGRESS
   REVIEW
   DONE
+}
+
+enum LinkType {
+  FIGMA
+  GITHUB
+  GOOGLE_DOC
+  NOTION
+  SWAGGER
+  LOOM
+  WEBSITE
+  OTHER
 }

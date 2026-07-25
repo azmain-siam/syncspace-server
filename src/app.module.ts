@@ -17,6 +17,7 @@ import { CommentModule } from './module/comment/comment.module';
 import { EmailModule } from './module/email/email.module';
 import { PrismaModule } from './module/prisma/prisma.module';
 import { ProjectModule } from './module/project/project.module';
+import { TaskLinkModule } from './module/task-link/task-link.module';
 import { TaskModule } from './module/task/task.module';
 import { UserModule } from './module/user/user.module';
 import { WorkspaceModule } from './module/workspace/workspace.module';
@@ -70,6 +71,7 @@ import { WorkspaceModule } from './module/workspace/workspace.module';
     TaskModule,
     CommentModule,
     AttachmentModule,
+    TaskLinkModule,
   ],
   providers: [
     { provide: APP_INTERCEPTOR, useClass: ResponseInterceptor },

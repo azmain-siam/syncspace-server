@@ -142,7 +142,7 @@ Legend:
 
 ---
 
-# Phase 9 — Upload
+# Phase 9 — Attachments & External Task Links
 
 ## Attachments
 
@@ -150,6 +150,14 @@ Legend:
 - [x] List (`GET /tasks/:taskId/attachments`)
 - [x] Delete (`DELETE /tasks/:taskId/attachments/:attachmentId`)
 - [x] File Storage & Serve Static Files
+
+## Task Links
+
+- [x] Create Link (`POST /tasks/:taskId/links`)
+- [x] List Links (`GET /tasks/:taskId/links`)
+- [x] Get Single Link (`GET /tasks/:taskId/links/:linkId`)
+- [x] Update Link (`PATCH /tasks/:taskId/links/:linkId`)
+- [x] Delete Link (`DELETE /tasks/:taskId/links/:linkId`)
 
 ---
 
