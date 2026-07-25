@@ -31,6 +31,8 @@ model User {
   taskLinks           TaskLink[]
   workspaceActivities WorkspaceActivity[]
   projectMembers      ProjectMember[]
+  notifications       Notification[]      @relation("UserNotifications")
+  actorNotifications  Notification[]      @relation("ActorNotifications")
 }
 
 model Workspace {
@@ -325,5 +327,33 @@ enum LinkType {
 
 enum StorageProvider {
   CLOUDINARY
+}
+
+model Notification {
+  id        String           @id @default(uuid())
+  userId    String
+  actorId   String
+  type      NotificationType
+  title     String
+  message   String
+  link      String?
+  isRead    Boolean          @default(false)
+
+  createdAt DateTime @default(now())
+
+  user  User @relation("UserNotifications", fields: [userId], references: [id], onDelete: Cascade)
+  actor User @relation("ActorNotifications", fields: [actorId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([isRead])
+  @@index([createdAt])
+}
+
+enum NotificationType {
+  TASK_ASSIGNED
+  TASK_MENTION
+  TASK_DUE
+  WORKSPACE_INVITATION
+  PROJECT_INVITATION
 }
 

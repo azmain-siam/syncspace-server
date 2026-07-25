@@ -23,6 +23,9 @@ import { TaskModule } from './module/task/task.module';
 import { UserModule } from './module/user/user.module';
 import { WorkspaceModule } from './module/workspace/workspace.module';
 
+import { EventEmitterModule } from '@nestjs/event-emitter';
+import { NotificationModule } from './module/notification/notification.module';
+
 @Module({
   imports: [
     JwtModule.register({}),
@@ -31,6 +34,7 @@ import { WorkspaceModule } from './module/workspace/workspace.module';
       load: [configuration],
       validationSchema,
     }),
+    EventEmitterModule.forRoot(),
     LoggerModule.forRoot({
       pinoHttp: {
         level: process.env.NODE_ENV === 'production' ? 'info' : 'debug',
@@ -74,6 +78,7 @@ import { WorkspaceModule } from './module/workspace/workspace.module';
     CommentModule,
     AttachmentModule,
     TaskLinkModule,
+    NotificationModule,
   ],
   providers: [
     { provide: APP_INTERCEPTOR, useClass: ResponseInterceptor },

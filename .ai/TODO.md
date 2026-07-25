@@ -176,11 +176,11 @@ Legend:
 
 ## Notification
 
-- [ ] Task Assigned
-- [ ] Mention
-- [ ] Due Reminder
-- [ ] Workspace Invitation
-- [ ] Project Invitation
+- [x] Task Assigned
+- [x] Mention
+- [x] Workspace Invitation
+- [x] Notification REST API (`GET /notifications`, `PATCH /notifications/:id/read`, `PATCH /notifications/read-all`, `DELETE /notifications/:id`)
+- [x] Event-driven Architecture (`@nestjs/event-emitter`)
 
 ---
 
@@ -254,22 +254,20 @@ Legend:
 7. [x] **Backend Architectural Refinement**: Execute items tracked in `.ai/ARCHITECTURAL_REVIEW.md`.
 8. [x] **Phase 8 — Comment API Module**: Implement Comment CRUD on tasks with cursor pagination, mentions, and edit history.
 9. [x] **Phase 9 — Attachment & File Upload Module**: Implement Task Attachment upload, list, delete, and static file serving.
-10. [ ] **Phase 11 — Notification Module**: Implement event-driven notifications for task assignments, mentions, due reminders, and invitations.
+10. [x] **Phase 11 — Notification Module**: Implement event-driven notifications for task assignments, mentions, and invitations.
+11. [ ] **Phase 12 — Realtime Module**: Implement Socket.IO for online users, live task updates, and real-time comments.
 
 ---
 
 # Next Feature (What to do next)
 
 ```
-Phase 11 — Event-Driven Notification Module
+Phase 12 — Realtime Module (Socket.IO Gateway)
 
-Step 1: Create `src/module/notification` with `NotificationService`, `NotificationController`, `NotificationModule`, and Prisma schema model for `Notification`.
-Step 2: Add Notification Prisma Model (`id`, `userId`, `actorId`, `type`, `title`, `message`, `link`, `isRead`, `createdAt`).
-Step 3: Listen to application events (task assigned, comment mention, task due, workspace invitation) and persist user notifications.
-Step 4: Implement REST Endpoints:
-        - GET   /notifications        (List current user's notifications, paginated)
-        - PATCH /notifications/:id/read  (Mark single notification as read)
-        - PATCH /notifications/read-all  (Mark all user notifications as read)
+Step 1: Create `src/module/realtime` with `RealtimeGateway`, `RealtimeService`, `RealtimeModule`.
+Step 2: Add JWT authentication to Socket.IO connection handshake.
+Step 3: Implement room joins (`workspace:id`, `board:id`, `task:id`) and user presence tracking (`user:online`/`user:offline`).
+Step 4: Listen to domain events (`task.moved`, `task.updated`, `comment.created`, `notification.created`) and broadcast real-time updates to connected room sockets.
 ```
 
 ---

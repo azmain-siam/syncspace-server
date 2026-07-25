@@ -7,6 +7,7 @@ import { Prisma, TaskPriority, TaskStatus } from '@prisma/client';
 import { SAFE_USER_MINIMAL_SELECT } from 'src/common/constants/prisma-selects.constant';
 import { User } from 'src/common/interfaces/user.interface';
 import { calculatePaginationMeta } from 'src/common/utils/pagination.util';
+import { EventEmitter2 } from '@nestjs/event-emitter';
 import { ActivityService } from '../activity/activity.service';
 import { ActivityAction } from '../activity/enums/activity-action.enum';
 import { PrismaService } from '../prisma/prisma.service';
@@ -20,6 +21,7 @@ export class TaskService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly activityService: ActivityService,
+    private readonly eventEmitter: EventEmitter2,
   ) {}
 
   // Verify column belongs to board, project, and workspace
@@ -134,6 +136,18 @@ export class TaskService {
           action: ActivityAction.TASK_ASSIGNED,
           description: `Assigned task ${task.title} to ${task.assignee?.name}`,
           metadata: { taskId: task.id, assigneeId: dto.assigneeId },
+        });
+
+        this.eventEmitter.emit('task.assigned', {
+          taskId: task.id,
+          title: task.title,
+          assigneeId: dto.assigneeId,
+          actorId: currentUser.id,
+          actorName: currentUser.name,
+          workspaceId,
+          projectId,
+          boardId,
+          columnId,
         });
       }
 
@@ -289,6 +303,18 @@ export class TaskService {
           action: ActivityAction.TASK_ASSIGNED,
           description: `Assigned task ${updatedTask.title} to ${updatedTask.assignee?.name}`,
           metadata: { taskId: updatedTask.id, assigneeId: dto.assigneeId },
+        });
+
+        this.eventEmitter.emit('task.assigned', {
+          taskId: updatedTask.id,
+          title: updatedTask.title,
+          assigneeId: dto.assigneeId,
+          actorId: currentUser.id,
+          actorName: currentUser.name,
+          workspaceId,
+          projectId,
+          boardId,
+          columnId,
         });
       }
 

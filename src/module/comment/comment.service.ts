@@ -21,6 +21,8 @@ import {
   CommentUpdatedEvent,
 } from './events/comment.events';
 
+import { EventEmitter2 } from '@nestjs/event-emitter';
+
 @Injectable()
 export class CommentService {
   private readonly logger = new Logger(CommentService.name);
@@ -28,6 +30,7 @@ export class CommentService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly activityService: ActivityService,
+    private readonly eventEmitter: EventEmitter2,
   ) {}
 
   // Verify task exists in column, board, project, and workspace
@@ -162,6 +165,19 @@ export class CommentService {
             mention.username,
           );
           this.dispatchEvent(CommentEventType.COMMENT_MENTION, mentionEvent);
+
+          this.eventEmitter.emit('comment.mention', {
+            commentId: comment.id,
+            taskId: task.id,
+            taskTitle: task.title,
+            mentionedUserId: mention.userId,
+            actorId: currentUser.id,
+            actorName: currentUser.name,
+            workspaceId,
+            projectId,
+            boardId,
+            columnId,
+          });
         }
       }
 
