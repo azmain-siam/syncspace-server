@@ -243,7 +243,7 @@ Legend:
 5. [x] **Phase 6 — Board & Column API Modules**: Implement Board & BoardColumn CRUD services and controllers.
 6. [x] **Phase 7 — Task API Module**: Implement Task CRUD, Move Task across columns, Assign Member, Priority & Status updates.
 7. [x] **Backend Architectural Refinement**: Execute items tracked in `.ai/ARCHITECTURAL_REVIEW.md`.
-8. [ ] **Phase 8 — Comment API Module**: Implement Comment CRUD on tasks.
+8. [x] **Phase 8 — Comment API Module**: Implement Comment CRUD on tasks.
 
 ---
 

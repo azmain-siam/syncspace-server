@@ -9,6 +9,7 @@ datasource db {
 // MODELS
 model User {
   id                 String  @id @default(uuid())
+  username           String  @unique
   name               String
   email              String  @unique
   phone              String? @unique
@@ -204,18 +205,23 @@ model Task {
 }
 
 model Comment {
-  id      String @id @default(uuid())
-  taskId  String
-  userId  String
-  content String
+  id        String    @id @default(uuid())
+  taskId    String
+  userId    String
+  content   String
+  isEdited  Boolean   @default(false)
+  editedAt  DateTime?
+  deletedAt DateTime?
 
   createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   task Task @relation(fields: [taskId], references: [id], onDelete: Cascade)
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([taskId])
   @@index([userId])
+  @@index([taskId, deletedAt, createdAt])
 }
 
 model Attachment {

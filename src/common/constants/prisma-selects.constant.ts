@@ -1,5 +1,6 @@
 export const SAFE_USER_SELECT = {
   id: true,
+  username: true,
   name: true,
   email: true,
   avatar: true,
@@ -9,6 +10,7 @@ export const SAFE_USER_SELECT = {
 
 export const SAFE_USER_MINIMAL_SELECT = {
   id: true,
+  username: true,
   name: true,
   email: true,
   avatar: true,

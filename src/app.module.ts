@@ -11,6 +11,7 @@ import { ActivityModule } from './module/activity/activity.module';
 import { AuthModule } from './module/auth/auth.module';
 import { BoardModule } from './module/board/board.module';
 import { ColumnModule } from './module/column/column.module';
+import { CommentModule } from './module/comment/comment.module';
 import { EmailModule } from './module/email/email.module';
 import { PrismaModule } from './module/prisma/prisma.module';
 import { ProjectModule } from './module/project/project.module';
@@ -50,6 +51,7 @@ import { WorkspaceModule } from './module/workspace/workspace.module';
     BoardModule,
     ColumnModule,
     TaskModule,
+    CommentModule,
   ],
   providers: [
     { provide: APP_INTERCEPTOR, useClass: ResponseInterceptor },
