@@ -192,6 +192,11 @@ export class CommentService {
       );
       this.dispatchEvent(CommentEventType.COMMENT_CREATED, createdEvent);
 
+      this.eventEmitter.emit('comment.created', {
+        comment,
+        taskId: task.id,
+      });
+
       return comment;
     });
   }
@@ -342,6 +347,11 @@ export class CommentService {
       );
       this.dispatchEvent(CommentEventType.COMMENT_UPDATED, updatedEvent);
 
+      this.eventEmitter.emit('comment.updated', {
+        comment: updatedComment,
+        taskId,
+      });
+
       return updatedComment;
     });
   }
@@ -411,6 +421,11 @@ export class CommentService {
         currentUser.id,
       );
       this.dispatchEvent(CommentEventType.COMMENT_DELETED, deletedEvent);
+
+      this.eventEmitter.emit('comment.deleted', {
+        commentId,
+        taskId,
+      });
 
       return null;
     });

@@ -262,19 +262,19 @@ Legend:
 15. [x] **Phase X — Token-Based Workspace Invitation System**: Implement `WorkspaceInvitation` model (7-day SHA-256 tokens), `POST /workspaces/:workspaceId/invitations`, `GET /workspace-invitations/validate`, `POST /workspace-invitations/accept` (transaction member creation & email verification check), `POST /workspace-invitations/decline`, `DELETE /workspaces/:workspaceId/invitations/:id`, and separated WorkspaceActivity & AuditLog logging.
 16. [x] **Google OAuth Authentication**: Implement `OAuthAccount` model, `GoogleStrategy`, `GoogleAuthGuard`, automatic account linking, JWT issuance, `GET /auth/google`, `GET /auth/google/callback`, and audit logging (`GOOGLE_LOGIN`, `GOOGLE_ACCOUNT_CREATED`, `GOOGLE_ACCOUNT_LINKED`).
 17. [x] **Background Email Jobs (BullMQ + Redis)**: Implement `QueueModule` (`@nestjs/bullmq`), `EmailQueueService`, `EmailProcessor`, exponential backoff retries (3 attempts: 1s, 2s, 4s), and refactor `AuthService` and `WorkspaceInvitationService` for non-blocking asynchronous email delivery.
-18. [ ] **Phase 12 — Realtime Module**: Implement Socket.IO for online users, live task updates, and real-time comments.
+18. [x] **Phase 12 — Realtime Module**: Implement Socket.IO gateway (`/realtime`), JWT handshake authentication (`WsJwtGuard`), user presence tracking (`user:online`/`user:offline`), room subscriptions (`workspace:id`, `board:id`, `task:id`), and event-driven domain broadcasting (`task.created`, `task.moved`, `task.updated`, `task.deleted`, `comment.created`, `notification.created`).
 
 ---
 
 # Next Feature (What to do next)
 
 ```
-Phase 12 — Realtime Module (Socket.IO Gateway)
+Phase 13 — Enterprise Webhook & Analytics Module
 
-Step 1: Create `src/module/realtime` with `RealtimeGateway`, `RealtimeService`, `RealtimeModule`.
-Step 2: Add JWT authentication to Socket.IO connection handshake.
-Step 3: Implement room joins (`workspace:id`, `board:id`, `task:id`) and user presence tracking (`user:online`/`user:offline`).
-Step 4: Listen to domain events (`task.moved`, `task.updated`, `comment.created`, `notification.created`) and broadcast real-time updates to connected room sockets.
+Step 1: Create `src/module/webhook` with `WebhookService`, `WebhookController`, `WebhookModule`.
+Step 2: Implement configurable HTTP Webhook endpoints for workspace event notifications (`task.moved`, `task.completed`, `member.joined`).
+Step 3: Enqueue webhook delivery via BullMQ `WEBHOOK_QUEUE` with signature verification (`HMAC-SHA256`) and exponential backoff retries.
+Step 4: Implement workspace productivity analytics dashboard API (`GET /workspaces/:workspaceId/analytics/summary`).
 ```
 
 ---
