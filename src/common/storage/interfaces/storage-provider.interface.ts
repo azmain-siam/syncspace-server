@@ -1,5 +1,7 @@
 import { StorageProviderType } from '../enums/storage-provider.enum';
 
+export const STORAGE_PROVIDER = 'STORAGE_PROVIDER';
+
 export interface UploadResult {
   url: string;
   storageKey: string;

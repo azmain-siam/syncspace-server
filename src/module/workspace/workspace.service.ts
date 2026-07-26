@@ -5,6 +5,7 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { WorkspaceRole } from '@prisma/client';
+import { SAFE_USER_MINIMAL_SELECT } from 'src/common/constants/prisma-selects.constant';
 import { User } from 'src/common/interfaces/user.interface';
 import { slugify } from 'src/common/utils/slug.util';
 import { ActivityService } from '../activity/activity.service';
@@ -313,13 +314,7 @@ export class WorkspaceService {
       },
       include: {
         user: {
-          select: {
-            id: true,
-            name: true,
-            email: true,
-            phone: true,
-            avatar: true,
-          },
+          select: SAFE_USER_MINIMAL_SELECT,
         },
       },
     });

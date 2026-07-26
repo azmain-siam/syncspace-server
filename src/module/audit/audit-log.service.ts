@@ -1,5 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
+import { calculatePaginationMeta } from 'src/common/utils/pagination.util';
 import { PrismaService } from '../prisma/prisma.service';
 import { AuditQueryDto } from './dto/audit-query.dto';
 import { AuditLogInput } from './interfaces/audit-log-input.interface';
@@ -72,18 +73,9 @@ export class AuditLogService {
       this.prisma.auditLog.count({ where }),
     ]);
 
-    const totalPages = Math.ceil(total / limit);
-
     return {
       auditLogs,
-      meta: {
-        page,
-        limit,
-        total,
-        totalPages,
-        hasNext: page < totalPages,
-        hasPrev: page > 1,
-      },
+      meta: calculatePaginationMeta(total, page, limit),
     };
   }
 }

@@ -4,6 +4,7 @@ import { APP_GUARD, APP_INTERCEPTOR } from '@nestjs/core';
 import { JwtModule } from '@nestjs/jwt';
 import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler';
 import { LoggerModule } from 'nestjs-pino';
+import { CommonModule } from './common/common.module';
 import { ResponseInterceptor } from './common/interceptors/response.interceptor';
 import { StorageModule } from './common/storage/storage.module';
 import configuration from './config/configuration';
@@ -56,6 +57,7 @@ import { SearchModule } from './module/search/search.module';
     }),
     ThrottlerModule.forRoot({ throttlers: [{ ttl: 60000, limit: 100 }] }),
     PrismaModule,
+    CommonModule,
     StorageModule,
     UserModule,
     AuthModule,

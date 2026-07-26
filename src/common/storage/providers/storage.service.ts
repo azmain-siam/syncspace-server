@@ -1,13 +1,16 @@
-import { Injectable } from '@nestjs/common';
+import { Inject, Injectable } from '@nestjs/common';
 import {
-  StorageProvider,
+  STORAGE_PROVIDER,
+  type StorageProvider,
   UploadResult,
 } from '../interfaces/storage-provider.interface';
-import { CloudinaryStorageService } from './cloudinary-storage.service';
 
 @Injectable()
 export class StorageService implements StorageProvider {
-  constructor(private readonly activeProvider: CloudinaryStorageService) {}
+  constructor(
+    @Inject(STORAGE_PROVIDER)
+    private readonly activeProvider: StorageProvider,
+  ) {}
 
   async upload(
     file: Express.Multer.File,

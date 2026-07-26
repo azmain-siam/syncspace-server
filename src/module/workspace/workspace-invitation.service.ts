@@ -9,6 +9,7 @@ import { ConfigService } from '@nestjs/config';
 import { InvitationStatus, WorkspaceRole } from '@prisma/client';
 import { generateSecureToken, hashToken } from 'src/common/utils/token.util';
 import { ActivityService } from '../activity/activity.service';
+import { ActivityAction } from '../activity/enums/activity-action.enum';
 import { AuditLogService } from '../audit/audit-log.service';
 import { AuditAction } from '../audit/enums/audit-action.enum';
 import { PrismaService } from '../prisma/prisma.service';
@@ -122,7 +123,7 @@ export class WorkspaceInvitationService {
     await this.activityService.createActivityLog(undefined, {
       workspaceId,
       actorId: inviterId,
-      action: 'INVITATION_SENT',
+      action: ActivityAction.INVITATION_SENT,
       description: `${inviterMember.user.name} invited ${dto.email} to the workspace as ${dto.role}`,
     });
 
@@ -249,7 +250,7 @@ export class WorkspaceInvitationService {
       await this.activityService.createActivityLog(tx, {
         workspaceId: invitation.workspaceId,
         actorId: user.id,
-        action: 'INVITATION_ACCEPTED',
+        action: ActivityAction.INVITATION_ACCEPTED,
         description: `${user.name} accepted invitation and joined the workspace`,
       });
     });
@@ -305,7 +306,7 @@ export class WorkspaceInvitationService {
     await this.activityService.createActivityLog(undefined, {
       workspaceId: invitation.workspaceId,
       actorId: user.id,
-      action: 'INVITATION_DECLINED',
+      action: ActivityAction.INVITATION_DECLINED,
       description: `${user.name} declined the workspace invitation`,
     });
 
@@ -361,7 +362,7 @@ export class WorkspaceInvitationService {
     await this.activityService.createActivityLog(undefined, {
       workspaceId,
       actorId,
-      action: 'INVITATION_CANCELLED',
+      action: ActivityAction.INVITATION_CANCELLED,
       description: `Workspace invitation for ${invitation.email} was cancelled`,
     });
 

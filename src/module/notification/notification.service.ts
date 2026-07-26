@@ -1,6 +1,7 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { OnEvent } from '@nestjs/event-emitter';
 import { NotificationType, Prisma } from '@prisma/client';
+import { calculatePaginationMeta } from 'src/common/utils/pagination.util';
 import { PrismaService } from '../prisma/prisma.service';
 import { NotificationQueryDto } from './dto/notification-query.dto';
 import {
@@ -100,18 +101,13 @@ export class NotificationService {
       this.prisma.notification.count({ where: { userId, isRead: false } }),
     ]);
 
-    const totalPages = Math.ceil(total / limit);
+    const paginationMeta = calculatePaginationMeta(total, page, limit);
 
     return {
       notifications,
       meta: {
-        page,
-        limit,
-        total,
-        totalPages,
+        ...paginationMeta,
         unreadCount,
-        hasNext: page < totalPages,
-        hasPrev: page > 1,
       },
     };
   }

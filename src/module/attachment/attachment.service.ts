@@ -7,6 +7,7 @@ import {
 import { StorageProvider, WorkspaceRole } from '@prisma/client';
 import { SAFE_USER_MINIMAL_SELECT } from 'src/common/constants/prisma-selects.constant';
 import { User } from 'src/common/interfaces/user.interface';
+import { EntityValidationService } from 'src/common/services/entity-validation.service';
 import { StorageService } from 'src/common/storage/providers/storage.service';
 import { ActivityService } from '../activity/activity.service';
 import { ActivityAction } from '../activity/enums/activity-action.enum';
@@ -16,42 +17,10 @@ import { PrismaService } from '../prisma/prisma.service';
 export class AttachmentService {
   constructor(
     private readonly prisma: PrismaService,
+    private readonly entityValidationService: EntityValidationService,
     private readonly storageService: StorageService,
     private readonly activityService: ActivityService,
   ) {}
-
-  // Verify task exists in column, board, project, and workspace
-  private async verifyTask(
-    workspaceId: string,
-    projectId: string,
-    boardId: string,
-    columnId: string,
-    taskId: string,
-  ) {
-    const task = await this.prisma.task.findFirst({
-      where: {
-        id: taskId,
-        column: {
-          id: columnId,
-          board: {
-            id: boardId,
-            project: {
-              id: projectId,
-              workspaceId,
-              deletedAt: null,
-            },
-          },
-        },
-        deletedAt: null,
-      },
-    });
-
-    if (!task) {
-      throw new NotFoundException('Task not found in this column');
-    }
-
-    return task;
-  }
 
   // Upload Attachment via StorageService abstraction
   async uploadAttachment(
@@ -67,7 +36,7 @@ export class AttachmentService {
       throw new BadRequestException('File is required');
     }
 
-    const task = await this.verifyTask(
+    const task = await this.entityValidationService.verifyTask(
       workspaceId,
       projectId,
       boardId,
@@ -126,7 +95,13 @@ export class AttachmentService {
     columnId: string,
     taskId: string,
   ) {
-    await this.verifyTask(workspaceId, projectId, boardId, columnId, taskId);
+    await this.entityValidationService.verifyTask(
+      workspaceId,
+      projectId,
+      boardId,
+      columnId,
+      taskId,
+    );
 
     return this.prisma.attachment.findMany({
       where: {
@@ -151,7 +126,13 @@ export class AttachmentService {
     attachmentId: string,
     currentUser: User,
   ) {
-    await this.verifyTask(workspaceId, projectId, boardId, columnId, taskId);
+    await this.entityValidationService.verifyTask(
+      workspaceId,
+      projectId,
+      boardId,
+      columnId,
+      taskId,
+    );
 
     const attachment = await this.prisma.attachment.findFirst({
       where: {
