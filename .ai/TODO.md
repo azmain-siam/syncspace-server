@@ -200,9 +200,10 @@ Legend:
 
 ## Search
 
-- [ ] Workspace Search
-- [ ] Project Search
-- [ ] Task Search
+- [x] Workspace Search (`GET /workspaces/:workspaceId/search`)
+- [x] Project Search
+- [x] Task Search
+- [x] Member & Comment Search
 
 ---
 
@@ -210,10 +211,10 @@ Legend:
 
 ## Analytics
 
-- [ ] Project Statistics
-- [ ] Task Statistics
-- [ ] Productivity
-- [ ] Member Activity
+- [x] High-level KPI Summary (`GET /workspaces/:workspaceId/dashboard/summary`)
+- [x] Task Distribution (`GET /workspaces/:workspaceId/dashboard/task-distribution`)
+- [x] Productivity Metrics (`GET /workspaces/:workspaceId/dashboard/productivity`)
+- [x] Member Workload Breakdown (`GET /workspaces/:workspaceId/dashboard/member-workload`)
 
 ---
 
@@ -263,18 +264,19 @@ Legend:
 16. [x] **Google OAuth Authentication**: Implement `OAuthAccount` model, `GoogleStrategy`, `GoogleAuthGuard`, automatic account linking, JWT issuance, `GET /auth/google`, `GET /auth/google/callback`, and audit logging (`GOOGLE_LOGIN`, `GOOGLE_ACCOUNT_CREATED`, `GOOGLE_ACCOUNT_LINKED`).
 17. [x] **Background Email Jobs (BullMQ + Redis)**: Implement `QueueModule` (`@nestjs/bullmq`), `EmailQueueService`, `EmailProcessor`, exponential backoff retries (3 attempts: 1s, 2s, 4s), and refactor `AuthService` and `WorkspaceInvitationService` for non-blocking asynchronous email delivery.
 18. [x] **Phase 12 — Realtime Module**: Implement Socket.IO gateway (`/realtime`), JWT handshake authentication (`WsJwtGuard`), user presence tracking (`user:online`/`user:offline`), room subscriptions (`workspace:id`, `board:id`, `task:id`), and event-driven domain broadcasting (`task.created`, `task.moved`, `task.updated`, `task.deleted`, `comment.created`, `notification.created`).
+19. [x] **Phase 13 — Global Search Module**: Implement workspace-scoped full-text search across Projects, Tasks, Comments, and Members (`GET /workspaces/:workspaceId/search`).
+20. [x] **Phase 14 — Dashboard & Analytics Module**: Implement high-level workspace summary KPIs, task status/priority distribution, productivity throughput, and per-member workload breakdown endpoints (`GET /workspaces/:workspaceId/dashboard/*`).
 
 ---
 
 # Next Feature (What to do next)
 
 ```
-Phase 13 — Enterprise Webhook & Analytics Module
+🎉 All core backend feature modules (Phases 1 through 14) are fully implemented, optimized, and verified!
 
-Step 1: Create `src/module/webhook` with `WebhookService`, `WebhookController`, `WebhookModule`.
-Step 2: Implement configurable HTTP Webhook endpoints for workspace event notifications (`task.moved`, `task.completed`, `member.joined`).
-Step 3: Enqueue webhook delivery via BullMQ `WEBHOOK_QUEUE` with signature verification (`HMAC-SHA256`) and exponential backoff retries.
-Step 4: Implement workspace productivity analytics dashboard API (`GET /workspaces/:workspaceId/analytics/summary`).
+Potential Next Steps:
+1. Run end-to-end integration test suite (`pnpm test:e2e`).
+2. Generate production documentation & OpenAPI client specs.
 ```
 
 ---

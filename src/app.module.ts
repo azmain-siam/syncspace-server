@@ -24,9 +24,11 @@ import { WorkspaceModule } from './module/workspace/workspace.module';
 
 import { EventEmitterModule } from '@nestjs/event-emitter';
 import { AuditLogModule } from './module/audit/audit-log.module';
+import { DashboardModule } from './module/dashboard/dashboard.module';
 import { NotificationModule } from './module/notification/notification.module';
 import { QueueModule } from './module/queue/queue.module';
 import { RealtimeModule } from './module/realtime/realtime.module';
+import { SearchModule } from './module/search/search.module';
 
 @Module({
   imports: [
@@ -71,6 +73,8 @@ import { RealtimeModule } from './module/realtime/realtime.module';
     TaskLinkModule,
     NotificationModule,
     AuditLogModule,
+    SearchModule,
+    DashboardModule,
   ],
   providers: [
     { provide: APP_INTERCEPTOR, useClass: ResponseInterceptor },
