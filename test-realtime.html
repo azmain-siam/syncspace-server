@@ -1,0 +1,192 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SyncSpace Realtime Module Tester</title>
+  <script src="https://cdn.socket.io/4.8.1/socket.io.min.js"></script>
+  <style>
+    body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; margin: 0; padding: 20px; background: #0f172a; color: #f8fafc; }
+    .container { max-width: 900px; margin: 0 auto; }
+    h1 { color: #38bdf8; margin-bottom: 5px; }
+    p.subtitle { color: #94a3b8; margin-top: 0; margin-bottom: 20px; }
+    .card { background: #1e293b; padding: 20px; border-radius: 10px; margin-bottom: 20px; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.3); border: 1px solid #334155; }
+    .card h3 { margin-top: 0; color: #e2e8f0; font-size: 16px; border-bottom: 1px solid #334155; padding-bottom: 8px; }
+    .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; }
+    label { display: block; font-size: 12px; color: #94a3b8; margin-bottom: 4px; text-transform: uppercase; letter-spacing: 0.5px; }
+    input, button, select { width: 100%; padding: 10px 12px; border-radius: 6px; border: 1px solid #475569; background: #0f172a; color: #f8fafc; box-sizing: border-box; font-size: 14px; margin-bottom: 10px; }
+    input:focus, select:focus { outline: none; border-color: #38bdf8; }
+    button { background: #0284c7; color: white; font-weight: 600; cursor: pointer; border: none; transition: background 0.2s; margin-bottom: 0; }
+    button:hover { background: #0369a1; }
+    button.btn-danger { background: #dc2626; }
+    button.btn-danger:hover { background: #b91c1c; }
+    button.btn-warning { background: #d97706; }
+    button.btn-warning:hover { background: #b45309; }
+    button.btn-success { background: #059669; }
+    button.btn-success:hover { background: #047857; }
+    #log { background: #020617; padding: 15px; border-radius: 8px; height: 350px; overflow-y: auto; font-family: "Fira Code", monospace; font-size: 13px; color: #38bdf8; border: 1px solid #1e293b; line-height: 1.5; white-space: pre-wrap; }
+    .status-badge { display: inline-block; padding: 3px 8px; border-radius: 12px; font-size: 12px; font-weight: bold; background: #64748b; color: white; }
+    .status-connected { background: #16a34a; }
+    .status-disconnected { background: #dc2626; }
+  </style>
+</head>
+<body>
+
+  <div class="container">
+    <h1>⚡ SyncSpace Realtime Module Tester</h1>
+    <p class="subtitle">Interactive Socket.IO client for testing presence, rooms, and domain event streaming.</p>
+
+    <div class="card">
+      <h3>1. Connection & Handshake <span id="statusBadge" class="status-badge status-disconnected">Disconnected</span></h3>
+      <div class="grid">
+        <div>
+          <label>Server URL</label>
+          <input type="text" id="serverUrl" value="http://localhost:5000">
+        </div>
+        <div>
+          <label>JWT Access Token</label>
+          <input type="text" id="token" placeholder="Bearer eyJhbGciOiJIUzI1Ni...">
+        </div>
+      </div>
+      <div style="display:flex; gap:10px;">
+        <button onclick="connectSocket()">Connect to /realtime</button>
+        <button class="btn-danger" onclick="disconnectSocket()">Disconnect</button>
+      </div>
+    </div>
+
+    <div class="grid">
+      <div class="card">
+        <h3>2. Room Subscriptions</h3>
+        <label>Room Type</label>
+        <select id="roomType">
+          <option value="workspace">Workspace</option>
+          <option value="board">Board</option>
+          <option value="task">Task</option>
+        </select>
+        <label>Target ID (UUID)</label>
+        <input type="text" id="targetId" placeholder="e.g. 12345678-abcd-...">
+        <div style="display:flex; gap:10px;">
+          <button onclick="joinRoom()">Join Room</button>
+          <button class="btn-warning" onclick="leaveRoom()">Leave Room</button>
+        </div>
+      </div>
+
+      <div class="card">
+        <h3>3. Presence & Online Users</h3>
+        <label>Workspace ID (UUID)</label>
+        <input type="text" id="presenceWorkspaceId" placeholder="Workspace UUID">
+        <button class="btn-success" onclick="getOnlineUsers()" style="margin-top:28px;">Query Online Users</button>
+      </div>
+    </div>
+
+    <div class="card">
+      <h3>Live Event Stream</h3>
+      <div id="log">Click "Connect to /realtime" to start receiving events...</div>
+    </div>
+  </div>
+
+  <script>
+    let socket = null;
+
+    function updateStatus(connected) {
+      const badge = document.getElementById('statusBadge');
+      if (connected) {
+        badge.innerText = 'Connected';
+        badge.className = 'status-badge status-connected';
+      } else {
+        badge.innerText = 'Disconnected';
+        badge.className = 'status-badge status-disconnected';
+      }
+    }
+
+    function log(msg, obj = null) {
+      const logDiv = document.getElementById('log');
+      const time = new Date().toLocaleTimeString();
+      let text = `[${time}] ${msg}`;
+      if (obj) text += '\n' + JSON.stringify(obj, null, 2);
+      logDiv.innerText += '\n' + text + '\n';
+      logDiv.scrollTop = logDiv.scrollHeight;
+    }
+
+    function connectSocket() {
+      const serverUrl = document.getElementById('serverUrl').value.trim();
+      const token = document.getElementById('token').value.trim();
+
+      if (!token) {
+        alert('Please paste a valid JWT access token.');
+        return;
+      }
+
+      log(`Initiating connection to ${serverUrl}/realtime...`);
+
+      socket = io(`${serverUrl}/realtime`, {
+        auth: { token: `Bearer ${token}` }
+      });
+
+      socket.on('connect', () => {
+        updateStatus(true);
+        log('✅ Connected successfully! Socket ID: ' + socket.id);
+      });
+
+      socket.on('disconnect', (reason) => {
+        updateStatus(false);
+        log('❌ Socket disconnected: ' + reason);
+      });
+
+      socket.on('connect_error', (err) => {
+        updateStatus(false);
+        log('⚠️ Connection Rejected: ' + err.message);
+      });
+
+      // Presence Events
+      socket.on('user:online', (data) => log('🟢 User Came Online:', data));
+      socket.on('user:offline', (data) => log('🔴 User Went Offline:', data));
+      socket.on('presence:online_users', (data) => log('👥 Online Workspace Users:', data));
+
+      // Room Acknowledgment Events
+      socket.on('room:joined', (data) => log('🚪 Joined Room Successfully:', data));
+      socket.on('room:left', (data) => log('🚪 Left Room:', data));
+
+      // Domain Event Broadcasts
+      socket.on('task:created', (data) => log('📌 Task Created (Broadcast):', data));
+      socket.on('task:moved', (data) => log('🚀 Task Moved (Broadcast):', data));
+      socket.on('task:updated', (data) => log('✏️ Task Updated (Broadcast):', data));
+      socket.on('task:deleted', (data) => log('🗑️ Task Deleted (Broadcast):', data));
+      socket.on('comment:created', (data) => log('💬 Comment Posted (Broadcast):', data));
+      socket.on('comment:updated', (data) => log('💬 Comment Edited (Broadcast):', data));
+      socket.on('comment:deleted', (data) => log('💬 Comment Deleted (Broadcast):', data));
+      socket.on('notification:created', (data) => log('🔔 Direct Notification:', data));
+    }
+
+    function disconnectSocket() {
+      if (socket) {
+        socket.disconnect();
+        log('Disconnected by client.');
+      }
+    }
+
+    function joinRoom() {
+      if (!socket || !socket.connected) { alert('Socket is not connected!'); return; }
+      const roomType = document.getElementById('roomType').value;
+      const targetId = document.getElementById('targetId').value.trim();
+      if (!targetId) { alert('Please enter a Target ID'); return; }
+      socket.emit('room:join', { roomType, targetId });
+    }
+
+    function leaveRoom() {
+      if (!socket || !socket.connected) { alert('Socket is not connected!'); return; }
+      const roomType = document.getElementById('roomType').value;
+      const targetId = document.getElementById('targetId').value.trim();
+      if (!targetId) { alert('Please enter a Target ID'); return; }
+      socket.emit('room:leave', { roomType, targetId });
+    }
+
+    function getOnlineUsers() {
+      if (!socket || !socket.connected) { alert('Socket is not connected!'); return; }
+      const workspaceId = document.getElementById('presenceWorkspaceId').value.trim();
+      if (!workspaceId) { alert('Please enter a Workspace ID'); return; }
+      socket.emit('presence:get_online', { workspaceId });
+    }
+  </script>
+</body>
+</html>

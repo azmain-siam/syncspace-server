@@ -6,6 +6,7 @@ import {
 import { WorkspaceRole } from '@prisma/client';
 import { SAFE_USER_MINIMAL_SELECT } from 'src/common/constants/prisma-selects.constant';
 import { User } from 'src/common/interfaces/user.interface';
+import { EntityValidationService } from 'src/common/services/entity-validation.service';
 import { ActivityService } from '../activity/activity.service';
 import { ActivityAction } from '../activity/enums/activity-action.enum';
 import { PrismaService } from '../prisma/prisma.service';
@@ -16,59 +17,20 @@ import { UpdateTaskLinkDto } from './dto/update-task-link.dto';
 export class TaskLinkService {
   constructor(
     private readonly prisma: PrismaService,
+    private readonly entityValidationService: EntityValidationService,
     private readonly activityService: ActivityService,
   ) {}
 
-  // Verify task exists in column, board, project, and workspace
-  private async verifyTask(
-    workspaceId: string,
-    projectId: string,
-    boardId: string,
-    columnId: string,
-    taskId: string,
-  ) {
-    const task = await this.prisma.task.findFirst({
-      where: {
-        id: taskId,
-        column: {
-          id: columnId,
-          board: {
-            id: boardId,
-            project: {
-              id: projectId,
-              workspaceId,
-              deletedAt: null,
-            },
-          },
-        },
-        deletedAt: null,
-      },
-    });
-
-    if (!task) {
-      throw new NotFoundException('Task not found in this column');
-    }
-
-    return task;
-  }
-
   // Create Link
   async createTaskLink(
-    workspaceId: string,
-    projectId: string,
-    boardId: string,
-    columnId: string,
     taskId: string,
     dto: CreateTaskLinkDto,
     currentUser: User,
   ) {
-    const task = await this.verifyTask(
-      workspaceId,
-      projectId,
-      boardId,
-      columnId,
-      taskId,
-    );
+    const task = await this.entityValidationService.verifyTaskById(taskId);
+    const workspaceId = task.column.board.project.workspaceId;
+    const projectId = task.column.board.project.id;
+    const boardId = task.column.board.id;
 
     return this.prisma.$transaction(async (tx) => {
       const link = await tx.taskLink.create({
@@ -104,14 +66,8 @@ export class TaskLinkService {
   }
 
   // Get All Links for a Task
-  async getTaskLinks(
-    workspaceId: string,
-    projectId: string,
-    boardId: string,
-    columnId: string,
-    taskId: string,
-  ) {
-    await this.verifyTask(workspaceId, projectId, boardId, columnId, taskId);
+  async getTaskLinks(taskId: string) {
+    await this.entityValidationService.verifyTaskById(taskId);
 
     return this.prisma.taskLink.findMany({
       where: { taskId },
@@ -123,15 +79,8 @@ export class TaskLinkService {
   }
 
   // Get Single Link
-  async getSingleTaskLink(
-    workspaceId: string,
-    projectId: string,
-    boardId: string,
-    columnId: string,
-    taskId: string,
-    linkId: string,
-  ) {
-    await this.verifyTask(workspaceId, projectId, boardId, columnId, taskId);
+  async getSingleTaskLink(taskId: string, linkId: string) {
+    await this.entityValidationService.verifyTaskById(taskId);
 
     const link = await this.prisma.taskLink.findFirst({
       where: {
@@ -152,16 +101,15 @@ export class TaskLinkService {
 
   // Update Link
   async updateTaskLink(
-    workspaceId: string,
-    projectId: string,
-    boardId: string,
-    columnId: string,
     taskId: string,
     linkId: string,
     dto: UpdateTaskLinkDto,
     currentUser: User,
   ) {
-    await this.verifyTask(workspaceId, projectId, boardId, columnId, taskId);
+    const task = await this.entityValidationService.verifyTaskById(taskId);
+    const workspaceId = task.column.board.project.workspaceId;
+    const projectId = task.column.board.project.id;
+    const boardId = task.column.board.id;
 
     const link = await this.prisma.taskLink.findFirst({
       where: {
@@ -229,16 +177,11 @@ export class TaskLinkService {
   }
 
   // Delete Link
-  async deleteTaskLink(
-    workspaceId: string,
-    projectId: string,
-    boardId: string,
-    columnId: string,
-    taskId: string,
-    linkId: string,
-    currentUser: User,
-  ) {
-    await this.verifyTask(workspaceId, projectId, boardId, columnId, taskId);
+  async deleteTaskLink(taskId: string, linkId: string, currentUser: User) {
+    const task = await this.entityValidationService.verifyTaskById(taskId);
+    const workspaceId = task.column.board.project.workspaceId;
+    const projectId = task.column.board.project.id;
+    const boardId = task.column.board.id;
 
     const link = await this.prisma.taskLink.findFirst({
       where: {

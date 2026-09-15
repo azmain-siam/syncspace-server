@@ -4,9 +4,11 @@ import {
   Logger,
   NotFoundException,
 } from '@nestjs/common';
+import { EventEmitter2 } from '@nestjs/event-emitter';
 import { WorkspaceRole } from '@prisma/client';
 import { SAFE_USER_MINIMAL_SELECT } from 'src/common/constants/prisma-selects.constant';
 import { User } from 'src/common/interfaces/user.interface';
+import { EntityValidationService } from 'src/common/services/entity-validation.service';
 import { ActivityService } from '../activity/activity.service';
 import { ActivityAction } from '../activity/enums/activity-action.enum';
 import { PrismaService } from '../prisma/prisma.service';
@@ -27,41 +29,10 @@ export class CommentService {
 
   constructor(
     private readonly prisma: PrismaService,
+    private readonly entityValidationService: EntityValidationService,
     private readonly activityService: ActivityService,
+    private readonly eventEmitter: EventEmitter2,
   ) {}
-
-  // Verify task exists in column, board, project, and workspace
-  private async verifyTask(
-    workspaceId: string,
-    projectId: string,
-    boardId: string,
-    columnId: string,
-    taskId: string,
-  ) {
-    const task = await this.prisma.task.findFirst({
-      where: {
-        id: taskId,
-        column: {
-          id: columnId,
-          board: {
-            id: boardId,
-            project: {
-              id: projectId,
-              workspaceId,
-              deletedAt: null,
-            },
-          },
-        },
-        deletedAt: null,
-      },
-    });
-
-    if (!task) {
-      throw new NotFoundException('Task not found in this column');
-    }
-
-    return task;
-  }
 
   // Parse @mentions from comment content and resolve workspace members
   private async parseAndResolveMentions(
@@ -95,28 +66,21 @@ export class CommentService {
     }));
   }
 
-  // Event dispatch hook for Notification and Realtime modules
   private dispatchEvent(eventType: CommentEventType, payload: any) {
     this.logger.log(`[Event Hook] ${eventType}: ${JSON.stringify(payload)}`);
   }
 
   // Create Comment
   async createComment(
-    workspaceId: string,
-    projectId: string,
-    boardId: string,
-    columnId: string,
     taskId: string,
     dto: CreateCommentDto,
     currentUser: User,
   ) {
-    const task = await this.verifyTask(
-      workspaceId,
-      projectId,
-      boardId,
-      columnId,
-      taskId,
-    );
+    const task = await this.entityValidationService.verifyTaskById(taskId);
+    const workspaceId = task.column.board.project.workspaceId;
+    const projectId = task.column.board.project.id;
+    const boardId = task.column.board.id;
+    const columnId = task.columnId;
 
     return this.prisma.$transaction(async (tx) => {
       const comment = await tx.comment.create({
@@ -162,6 +126,19 @@ export class CommentService {
             mention.username,
           );
           this.dispatchEvent(CommentEventType.COMMENT_MENTION, mentionEvent);
+
+          this.eventEmitter.emit('comment.mention', {
+            commentId: comment.id,
+            taskId: task.id,
+            taskTitle: task.title,
+            mentionedUserId: mention.userId,
+            actorId: currentUser.id,
+            actorName: currentUser.name,
+            workspaceId,
+            projectId,
+            boardId,
+            columnId,
+          });
         }
       }
 
@@ -176,20 +153,18 @@ export class CommentService {
       );
       this.dispatchEvent(CommentEventType.COMMENT_CREATED, createdEvent);
 
+      this.eventEmitter.emit('comment.created', {
+        comment,
+        taskId: task.id,
+      });
+
       return comment;
     });
   }
 
   // Get Task Comments (Cursor Pagination)
-  async getTaskComments(
-    workspaceId: string,
-    projectId: string,
-    boardId: string,
-    columnId: string,
-    taskId: string,
-    query: CommentCursorQueryDto,
-  ) {
-    await this.verifyTask(workspaceId, projectId, boardId, columnId, taskId);
+  async getTaskComments(taskId: string, query: CommentCursorQueryDto) {
+    await this.entityValidationService.verifyTaskById(taskId);
 
     const limit = query.limit ?? 20;
     const fetchLimit = limit + 1; // Fetch 1 extra to determine hasNextPage
@@ -234,15 +209,8 @@ export class CommentService {
   }
 
   // Get single comment
-  async getComment(
-    workspaceId: string,
-    projectId: string,
-    boardId: string,
-    columnId: string,
-    taskId: string,
-    commentId: string,
-  ) {
-    await this.verifyTask(workspaceId, projectId, boardId, columnId, taskId);
+  async getComment(taskId: string, commentId: string) {
+    await this.entityValidationService.verifyTaskById(taskId);
 
     const comment = await this.prisma.comment.findFirst({
       where: {
@@ -264,23 +232,13 @@ export class CommentService {
 
   // Update Comment
   async updateComment(
-    workspaceId: string,
-    projectId: string,
-    boardId: string,
-    columnId: string,
     taskId: string,
     commentId: string,
     dto: UpdateCommentDto,
     currentUser: User,
   ) {
-    const existingComment = await this.getComment(
-      workspaceId,
-      projectId,
-      boardId,
-      columnId,
-      taskId,
-      commentId,
-    );
+    const task = await this.entityValidationService.verifyTaskById(taskId);
+    const existingComment = await this.getComment(taskId, commentId);
 
     // Only author or Workspace Owner/Admin can edit
     if (existingComment.userId !== currentUser.id) {
@@ -288,6 +246,10 @@ export class CommentService {
         'Only the comment author can edit this comment',
       );
     }
+
+    const workspaceId = task.column.board.project.workspaceId;
+    const projectId = task.column.board.project.id;
+    const boardId = task.column.board.id;
 
     return this.prisma.$transaction(async (tx) => {
       const updatedComment = await tx.comment.update({
@@ -326,28 +288,22 @@ export class CommentService {
       );
       this.dispatchEvent(CommentEventType.COMMENT_UPDATED, updatedEvent);
 
+      this.eventEmitter.emit('comment.updated', {
+        comment: updatedComment,
+        taskId,
+      });
+
       return updatedComment;
     });
   }
 
   // Delete Comment (Soft Delete)
-  async deleteComment(
-    workspaceId: string,
-    projectId: string,
-    boardId: string,
-    columnId: string,
-    taskId: string,
-    commentId: string,
-    currentUser: User,
-  ) {
-    const comment = await this.getComment(
-      workspaceId,
-      projectId,
-      boardId,
-      columnId,
-      taskId,
-      commentId,
-    );
+  async deleteComment(taskId: string, commentId: string, currentUser: User) {
+    const task = await this.entityValidationService.verifyTaskById(taskId);
+    const comment = await this.getComment(taskId, commentId);
+    const workspaceId = task.column.board.project.workspaceId;
+    const projectId = task.column.board.project.id;
+    const boardId = task.column.board.id;
 
     // Check permissions (Author or Owner/Admin)
     const member = await this.prisma.workspaceMember.findUnique({
@@ -367,7 +323,7 @@ export class CommentService {
 
     if (!isAuthor && !isElevated) {
       throw new ForbiddenException(
-        'Insufficient permissions to delete this comment',
+        'You do not have permission to delete this comment',
       );
     }
 
@@ -395,6 +351,11 @@ export class CommentService {
         currentUser.id,
       );
       this.dispatchEvent(CommentEventType.COMMENT_DELETED, deletedEvent);
+
+      this.eventEmitter.emit('comment.deleted', {
+        commentId,
+        taskId,
+      });
 
       return null;
     });

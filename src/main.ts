@@ -2,10 +2,8 @@ import { ValidationPipe } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { NestFactory } from '@nestjs/core';
 import { SwaggerModule } from '@nestjs/swagger';
-import * as express from 'express';
 import helmet from 'helmet';
 import { Logger } from 'nestjs-pino';
-import * as path from 'path';
 import { AppModule } from './app.module';
 import { HttpExceptionFilter } from './common/filters/http-exception.filter';
 import { swaggerConfig, swaggerCustomOptions } from './config/swagger.config';
@@ -18,17 +16,17 @@ async function bootstrap() {
   const logger = app.get(Logger);
   app.useLogger(logger);
 
+  const configService = app.get(ConfigService);
+  const frontendUrl = configService.get<string>(
+    'FRONTEND_URL',
+    'http://localhost:3000',
+  );
+
   app.use(helmet());
   app.enableCors({
-    origin: ['http://localhost:3000'],
+    origin: [frontendUrl, 'http://localhost:3000'],
     credentials: true,
   });
-
-  // Serve uploaded files statically at /uploads/*
-  app.use(
-    '/uploads',
-    express.static(path.join(process.cwd(), 'public', 'uploads')),
-  );
 
   app.setGlobalPrefix('api/v1', {
     exclude: ['/health'],
@@ -61,10 +59,9 @@ async function bootstrap() {
   );
   SwaggerModule.setup('docs', app, document, swaggerCustomOptions);
 
-  const configService = app.get(ConfigService);
-  const port = configService.get<number>('port');
+  const port = configService.get<number>('port', 5000);
 
-  await app.listen(port!, () => {
+  await app.listen(port, () => {
     logger.log(`SyncSpace API listening on port ${port}`);
   });
 }

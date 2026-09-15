@@ -9,7 +9,7 @@ import {
   Query,
   UseGuards,
 } from '@nestjs/common';
-import { ApiOperation } from '@nestjs/swagger';
+import { ApiOperation, ApiTags } from '@nestjs/swagger';
 import { CurrentUser } from 'src/common/decorators/get-user.decorator';
 import { ResponseMessage } from 'src/common/decorators/response-message.decorator';
 import { WorkspaceRoles } from 'src/common/decorators/workspace-roles.decorator';
@@ -19,17 +19,37 @@ import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { WorkspaceRole } from '../workspace/enums/workspace-role.enum';
 import { CreateTaskDto } from './dto/create-task.dto';
 import { MoveTaskDto } from './dto/move-task.dto';
+import { MyTasksQueryDto } from './dto/my-tasks-query.dto';
 import { TaskQueryDto } from './dto/task-query.dto';
 import { UpdateTaskDto } from './dto/update-task.dto';
 import { TaskService } from './task.service';
 
-@Controller(
-  'workspaces/:workspaceId/projects/:projectId/boards/:boardId/columns/:columnId/tasks',
-)
+@ApiTags('Tasks')
+@Controller()
 export class TaskController {
   constructor(private readonly taskService: TaskService) {}
 
-  @Post()
+  @Get('workspaces/:workspaceId/my-tasks')
+  @UseGuards(JwtAuthGuard, WorkspaceRoleGuard)
+  @WorkspaceRoles(
+    WorkspaceRole.OWNER,
+    WorkspaceRole.ADMIN,
+    WorkspaceRole.MEMBER,
+    WorkspaceRole.GUEST,
+  )
+  @ResponseMessage('Personal workspace tasks fetched successfully')
+  @ApiOperation({
+    summary: 'Get all tasks assigned to current user across the workspace',
+  })
+  getMyTasks(
+    @Param('workspaceId') workspaceId: string,
+    @Query() query: MyTasksQueryDto,
+    @CurrentUser() user: User,
+  ) {
+    return this.taskService.getMyTasks(workspaceId, query, user);
+  }
+
+  @Post('columns/:columnId/tasks')
   @UseGuards(JwtAuthGuard, WorkspaceRoleGuard)
   @WorkspaceRoles(
     WorkspaceRole.OWNER,
@@ -39,74 +59,42 @@ export class TaskController {
   @ResponseMessage('Task created successfully')
   @ApiOperation({ summary: 'Create task in board column' })
   createTask(
-    @Param('workspaceId') workspaceId: string,
-    @Param('projectId') projectId: string,
-    @Param('boardId') boardId: string,
     @Param('columnId') columnId: string,
     @Body() dto: CreateTaskDto,
     @CurrentUser() user: User,
   ) {
-    return this.taskService.createTask(
-      workspaceId,
-      projectId,
-      boardId,
-      columnId,
-      dto,
-      user,
-    );
+    return this.taskService.createTask(columnId, dto, user);
   }
 
-  @Get()
+  @Get('columns/:columnId/tasks')
   @UseGuards(JwtAuthGuard, WorkspaceRoleGuard)
   @WorkspaceRoles(
     WorkspaceRole.OWNER,
     WorkspaceRole.ADMIN,
     WorkspaceRole.MEMBER,
+    WorkspaceRole.GUEST,
   )
   @ResponseMessage('Column tasks fetched successfully')
   @ApiOperation({ summary: 'Get all tasks in board column' })
-  getTasks(
-    @Param('workspaceId') workspaceId: string,
-    @Param('projectId') projectId: string,
-    @Param('boardId') boardId: string,
-    @Param('columnId') columnId: string,
-    @Query() query: TaskQueryDto,
-  ) {
-    return this.taskService.getTasks(
-      workspaceId,
-      projectId,
-      boardId,
-      columnId,
-      query,
-    );
+  getTasks(@Param('columnId') columnId: string, @Query() query: TaskQueryDto) {
+    return this.taskService.getTasks(columnId, query);
   }
 
-  @Get(':taskId')
+  @Get('tasks/:taskId')
   @UseGuards(JwtAuthGuard, WorkspaceRoleGuard)
   @WorkspaceRoles(
     WorkspaceRole.OWNER,
     WorkspaceRole.ADMIN,
     WorkspaceRole.MEMBER,
+    WorkspaceRole.GUEST,
   )
   @ResponseMessage('Task fetched successfully')
   @ApiOperation({ summary: 'Get single task details' })
-  getTask(
-    @Param('workspaceId') workspaceId: string,
-    @Param('projectId') projectId: string,
-    @Param('boardId') boardId: string,
-    @Param('columnId') columnId: string,
-    @Param('taskId') taskId: string,
-  ) {
-    return this.taskService.getTask(
-      workspaceId,
-      projectId,
-      boardId,
-      columnId,
-      taskId,
-    );
+  getTask(@Param('taskId') taskId: string) {
+    return this.taskService.getTask(taskId);
   }
 
-  @Patch(':taskId')
+  @Patch('tasks/:taskId')
   @UseGuards(JwtAuthGuard, WorkspaceRoleGuard)
   @WorkspaceRoles(
     WorkspaceRole.OWNER,
@@ -116,26 +104,14 @@ export class TaskController {
   @ResponseMessage('Task updated successfully')
   @ApiOperation({ summary: 'Update task properties' })
   updateTask(
-    @Param('workspaceId') workspaceId: string,
-    @Param('projectId') projectId: string,
-    @Param('boardId') boardId: string,
-    @Param('columnId') columnId: string,
     @Param('taskId') taskId: string,
     @Body() dto: UpdateTaskDto,
     @CurrentUser() user: User,
   ) {
-    return this.taskService.updateTask(
-      workspaceId,
-      projectId,
-      boardId,
-      columnId,
-      taskId,
-      dto,
-      user,
-    );
+    return this.taskService.updateTask(taskId, dto, user);
   }
 
-  @Patch(':taskId/move')
+  @Post('tasks/:taskId/move')
   @UseGuards(JwtAuthGuard, WorkspaceRoleGuard)
   @WorkspaceRoles(
     WorkspaceRole.OWNER,
@@ -145,26 +121,14 @@ export class TaskController {
   @ResponseMessage('Task moved successfully')
   @ApiOperation({ summary: 'Move task across columns or reorder' })
   moveTask(
-    @Param('workspaceId') workspaceId: string,
-    @Param('projectId') projectId: string,
-    @Param('boardId') boardId: string,
-    @Param('columnId') columnId: string,
     @Param('taskId') taskId: string,
     @Body() dto: MoveTaskDto,
     @CurrentUser() user: User,
   ) {
-    return this.taskService.moveTask(
-      workspaceId,
-      projectId,
-      boardId,
-      columnId,
-      taskId,
-      dto,
-      user,
-    );
+    return this.taskService.moveTask(taskId, dto, user);
   }
 
-  @Delete(':taskId')
+  @Delete('tasks/:taskId')
   @UseGuards(JwtAuthGuard, WorkspaceRoleGuard)
   @WorkspaceRoles(
     WorkspaceRole.OWNER,
@@ -173,21 +137,7 @@ export class TaskController {
   )
   @ResponseMessage('Task deleted successfully')
   @ApiOperation({ summary: 'Delete task' })
-  deleteTask(
-    @Param('workspaceId') workspaceId: string,
-    @Param('projectId') projectId: string,
-    @Param('boardId') boardId: string,
-    @Param('columnId') columnId: string,
-    @Param('taskId') taskId: string,
-    @CurrentUser() user: User,
-  ) {
-    return this.taskService.deleteTask(
-      workspaceId,
-      projectId,
-      boardId,
-      columnId,
-      taskId,
-      user,
-    );
+  deleteTask(@Param('taskId') taskId: string, @CurrentUser() user: User) {
+    return this.taskService.deleteTask(taskId, user);
   }
 }

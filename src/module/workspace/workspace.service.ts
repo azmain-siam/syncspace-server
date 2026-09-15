@@ -4,9 +4,16 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
-import { WorkspaceRole } from '@prisma/client';
+import {
+  ProjectPriority,
+  ProjectStatus,
+  TaskPriority,
+  TaskStatus,
+  WorkspaceRole,
+} from '@prisma/client';
+import { SAFE_USER_MINIMAL_SELECT } from 'src/common/constants/prisma-selects.constant';
 import { User } from 'src/common/interfaces/user.interface';
-import { slugify } from 'src/common/utils/slug.util';
+import { generateUniqueSlug } from 'src/common/utils/slug.util';
 import { ActivityService } from '../activity/activity.service';
 import { ActivityAction } from '../activity/enums/activity-action.enum';
 import { PrismaService } from '../prisma/prisma.service';
@@ -34,7 +41,7 @@ export class WorkspaceService {
           ownerId: userId,
           name: createWorkspaceDto.name,
           logo: createWorkspaceDto.logo,
-          slug: slugify(createWorkspaceDto.name),
+          slug: generateUniqueSlug(createWorkspaceDto.name),
         },
       });
 
@@ -54,6 +61,84 @@ export class WorkspaceService {
         metadata: {
           workspaceId: workspace.id,
           workspaceName: workspace.name,
+        },
+      });
+
+      // Onboarding Seed: Default "General" project, Kanban board, columns, and starter tutorial tasks
+      const project = await tx.project.create({
+        data: {
+          workspaceId: workspace.id,
+          title: 'General',
+          key: 'GEN',
+          taskCounter: 2,
+          slug: 'general',
+          description: 'Default project for team collaboration',
+          createdById: userId,
+          priority: ProjectPriority.MEDIUM,
+          status: ProjectStatus.ACTIVE,
+        },
+      });
+
+      const board = await tx.board.create({
+        data: {
+          projectId: project.id,
+          title: 'Main Board',
+        },
+      });
+
+      const todoCol = await tx.boardColumn.create({
+        data: {
+          boardId: board.id,
+          title: 'To Do',
+          order: 0,
+        },
+      });
+
+      await tx.boardColumn.create({
+        data: {
+          boardId: board.id,
+          title: 'In Progress',
+          order: 1,
+        },
+      });
+
+      await tx.boardColumn.create({
+        data: {
+          boardId: board.id,
+          title: 'Done',
+          order: 2,
+        },
+      });
+
+      await tx.task.create({
+        data: {
+          columnId: todoCol.id,
+          key: 'GEN-1',
+          taskNumber: 1,
+          createdBy: userId,
+          assigneeId: userId,
+          title: 'Welcome to SyncSpace! 👋',
+          description:
+            'SyncSpace is your team collaboration workspace. Click on this task to view details, leave comments, attach files, or change priority.',
+          priority: TaskPriority.HIGH,
+          status: TaskStatus.TODO,
+          order: 0,
+        },
+      });
+
+      await tx.task.create({
+        data: {
+          columnId: todoCol.id,
+          key: 'GEN-2',
+          taskNumber: 2,
+          createdBy: userId,
+          assigneeId: userId,
+          title: 'Try moving this card to "In Progress" 🚀',
+          description:
+            'Drag and drop cards across columns to update their status in real-time. Moving a card to "Done" will automatically update your project analytics.',
+          priority: TaskPriority.MEDIUM,
+          status: TaskStatus.TODO,
+          order: 1,
         },
       });
 
@@ -313,13 +398,7 @@ export class WorkspaceService {
       },
       include: {
         user: {
-          select: {
-            id: true,
-            name: true,
-            email: true,
-            phone: true,
-            avatar: true,
-          },
+          select: SAFE_USER_MINIMAL_SELECT,
         },
       },
     });

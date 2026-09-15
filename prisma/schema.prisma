@@ -8,29 +8,78 @@ datasource db {
 
 // MODELS
 model User {
-  id                 String  @id @default(uuid())
-  username           String  @unique
+  id                 String    @id @default(uuid())
+  username           String    @unique
   name               String
-  email              String  @unique
-  phone              String? @unique
-  password           String
+  email              String    @unique
+  phone              String?   @unique
+  password           String?
   avatar             String?
-  isEmailVerified    Boolean @default(false)
+  bio                String?
+  timezone           String?      @default("UTC")
+  provider           AuthProvider @default(LOCAL)
+  lastLoginAt        DateTime?
+  isEmailVerified    Boolean      @default(false)
+  emailVerifiedAt    DateTime?
   hashedRefreshToken String?
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  ownedWorkspaces     Workspace[]         @relation("WorkspaceOwner")
-  workspaceMembers    WorkspaceMember[]
-  assignedTasks       Task[]              @relation("TaskAssignee")
-  createdProjects     Project[]           @relation("ProjectCreator")
-  createdTasks        Task[]              @relation("TaskCreator")
-  comments            Comment[]
-  uploadedFiles       Attachment[]
-  taskLinks           TaskLink[]
-  workspaceActivities WorkspaceActivity[]
-  projectMembers      ProjectMember[]
+  ownedWorkspaces          Workspace[]           @relation("WorkspaceOwner")
+  workspaceMembers         WorkspaceMember[]
+  assignedTasks            Task[]                @relation("TaskAssignee")
+  assignedChecklists       TaskChecklist[]       @relation("ChecklistAssignee")
+  createdProjects          Project[]             @relation("ProjectCreator")
+  createdTasks             Task[]                @relation("TaskCreator")
+  comments                 Comment[]
+  uploadedFiles            Attachment[]
+  taskLinks                TaskLink[]
+  workspaceActivities      WorkspaceActivity[]
+  projectMembers           ProjectMember[]
+  notifications            Notification[]        @relation("UserNotifications")
+  actorNotifications       Notification[]        @relation("ActorNotifications")
+  auditLogs                AuditLog[]            @relation("UserAuditLogs")
+  verificationTokens       VerificationToken[]
+  sentWorkspaceInvitations WorkspaceInvitation[] @relation("SentWorkspaceInvitations")
+  oauthAccounts            OAuthAccount[]
+}
+
+model VerificationToken {
+  id        String                @id @default(uuid())
+  userId    String
+  token     String                @unique
+  type      VerificationTokenType
+  expiresAt DateTime
+  usedAt    DateTime?
+
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([token])
+}
+
+model AuditLog {
+  id          String   @id @default(uuid())
+  workspaceId String?
+  actorId     String?
+  action      String
+  ipAddress   String?
+  userAgent   String?
+  metadata    Json?
+
+  createdAt DateTime @default(now())
+
+  actor     User?      @relation("UserAuditLogs", fields: [actorId], references: [id], onDelete: SetNull)
+  workspace Workspace? @relation(fields: [workspaceId], references: [id], onDelete: SetNull)
+
+  @@index([workspaceId])
+  @@index([workspaceId, createdAt])
+  @@index([actorId])
+  @@index([action])
+  @@index([createdAt])
 }
 
 model Workspace {
@@ -46,10 +95,13 @@ model Workspace {
   updatedAt DateTime  @updatedAt
   deletedAt DateTime?
 
-  owner               User                @relation("WorkspaceOwner", fields: [ownerId], references: [id])
+  owner               User                  @relation("WorkspaceOwner", fields: [ownerId], references: [id])
   members             WorkspaceMember[]
   projects            Project[]
   workspaceActivities WorkspaceActivity[]
+  invitations         WorkspaceInvitation[]
+  labels              TaskLabel[]
+  auditLogs           AuditLog[]
 
   @@index([ownerId])
   @@index([deletedAt])
@@ -69,6 +121,27 @@ model WorkspaceMember {
   @@unique([workspaceId, userId])
   @@index([workspaceId])
   @@index([userId])
+}
+
+model WorkspaceInvitation {
+  id          String           @id @default(uuid())
+  workspaceId String
+  invitedById String
+  email       String
+  role        WorkspaceRole
+  tokenHash   String           @unique
+  status      InvitationStatus @default(PENDING)
+  expiresAt   DateTime
+  acceptedAt  DateTime?
+
+  createdAt DateTime @default(now())
+
+  workspace Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  invitedBy User      @relation("SentWorkspaceInvitations", fields: [invitedById], references: [id], onDelete: Cascade)
+
+  @@index([workspaceId])
+  @@index([email])
+  @@index([status])
 }
 
 model WorkspaceActivity {
@@ -94,6 +167,7 @@ model WorkspaceActivity {
   @@index([projectId])
   @@index([actorId])
   @@index([createdAt])
+  @@index([taskId, createdAt])
   @@index([workspaceId, createdAt])
 }
 
@@ -101,6 +175,8 @@ model Project {
   id          String          @id @default(uuid())
   workspaceId String
   title       String
+  key         String?
+  taskCounter Int             @default(0)
   slug        String?
   description String?
   status      ProjectStatus   @default(ACTIVE)
@@ -121,6 +197,7 @@ model Project {
   projectMembers ProjectMember[]
 
   @@index([workspaceId])
+  @@index([workspaceId, key])
   @@index([status])
   @@index([createdById])
   @@index([workspaceId, deletedAt])
@@ -175,6 +252,8 @@ model BoardColumn {
 model Task {
   id          String       @id @default(uuid())
   columnId    String
+  key         String?
+  taskNumber  Int?
   assigneeId  String?
   createdBy   String
   title       String
@@ -194,16 +273,52 @@ model Task {
   comments            Comment[]
   attachments         Attachment[]
   links               TaskLink[]
+  checklists          TaskChecklist[]
   workspaceActivities WorkspaceActivity[]
+  labels              TaskLabel[]
 
   @@unique([columnId, order])
   @@index([columnId])
+  @@index([key])
   @@index([assigneeId])
   @@index([createdBy])
   @@index([priority])
   @@index([status])
   @@index([dueDate])
   @@index([columnId, deletedAt])
+}
+
+model TaskChecklist {
+  id          String   @id @default(uuid())
+  taskId      String
+  title       String
+  isCompleted Boolean  @default(false)
+  order       Int      @default(0)
+  assigneeId  String?
+
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  task        Task     @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  assignee    User?    @relation("ChecklistAssignee", fields: [assigneeId], references: [id], onDelete: SetNull)
+
+  @@index([taskId])
+  @@index([taskId, order])
+}
+
+model TaskLabel {
+  id          String   @id @default(uuid())
+  workspaceId String
+  name        String
+  color       String
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  workspace Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  tasks     Task[]
+
+  @@unique([workspaceId, name])
+  @@index([workspaceId])
 }
 
 model Comment {
@@ -227,13 +342,15 @@ model Comment {
 }
 
 model Attachment {
-  id         String @id @default(uuid())
-  taskId     String
-  fileName   String
-  fileUrl    String
-  fileSize   Int
-  mimeType   String
-  uploadedBy String
+  id              String          @id @default(uuid())
+  taskId          String
+  fileName        String
+  fileUrl         String
+  storageProvider StorageProvider @default(CLOUDINARY)
+  storageKey      String          @default("")
+  fileSize        Int
+  mimeType        String
+  uploadedBy      String
 
   createdAt DateTime @default(now())
 
@@ -262,11 +379,32 @@ model TaskLink {
   @@index([createdById])
 }
 
+model Notification {
+  id      String           @id @default(uuid())
+  userId  String
+  actorId String
+  type    NotificationType
+  title   String
+  message String
+  link    String?
+  isRead  Boolean          @default(false)
+
+  createdAt DateTime @default(now())
+
+  user  User @relation("UserNotifications", fields: [userId], references: [id], onDelete: Cascade)
+  actor User @relation("ActorNotifications", fields: [actorId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([isRead])
+  @@index([createdAt])
+}
+
 // ENUMS
 enum WorkspaceRole {
   OWNER
   ADMIN
   MEMBER
+  GUEST
 }
 
 enum WorkspaceVisibility {
@@ -320,3 +458,54 @@ enum LinkType {
   WEBSITE
   OTHER
 }
+
+enum StorageProvider {
+  CLOUDINARY
+}
+
+enum NotificationType {
+  TASK_ASSIGNED
+  TASK_MENTION
+  TASK_DUE
+  WORKSPACE_INVITATION
+  PROJECT_INVITATION
+}
+
+enum VerificationTokenType {
+  EMAIL_VERIFICATION
+  PASSWORD_RESET
+}
+
+enum InvitationStatus {
+  PENDING
+  ACCEPTED
+  DECLINED
+  EXPIRED
+  CANCELLED
+}
+
+model OAuthAccount {
+  id         String        @id @default(uuid())
+  userId     String
+  provider   OAuthProvider
+  providerId String
+  createdAt  DateTime      @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerId])
+  @@index([userId])
+}
+
+enum AuthProvider {
+  LOCAL
+  GOOGLE
+}
+
+enum OAuthProvider {
+  GOOGLE
+  GITHUB
+  MICROSOFT
+  APPLE
+}
+

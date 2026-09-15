@@ -123,6 +123,7 @@ export class WorkspaceController {
     WorkspaceRole.OWNER,
     WorkspaceRole.ADMIN,
     WorkspaceRole.MEMBER,
+    WorkspaceRole.GUEST,
   )
   @ResponseMessage('Members fetched successfully')
   @ApiOperation({ summary: 'Get workspace members' })

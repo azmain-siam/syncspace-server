@@ -59,9 +59,9 @@ Legend:
 ## User
 
 - [x] Profile (`GET /api/v1/user/me`)
-- [ ] Update Profile
-- [ ] Avatar Upload
-- [ ] Change Password
+- [x] Update Profile (`PATCH /api/v1/user/me`)
+- [x] Avatar Upload (`POST /api/v1/user/avatar`)
+- [x] Change Password (`PATCH /api/v1/user/change-password`)
 
 ---
 
@@ -176,11 +176,11 @@ Legend:
 
 ## Notification
 
-- [ ] Task Assigned
-- [ ] Mention
-- [ ] Due Reminder
-- [ ] Workspace Invitation
-- [ ] Project Invitation
+- [x] Task Assigned
+- [x] Mention
+- [x] Workspace Invitation
+- [x] Notification REST API (`GET /notifications`, `PATCH /notifications/:id/read`, `PATCH /notifications/read-all`, `DELETE /notifications/:id`)
+- [x] Event-driven Architecture (`@nestjs/event-emitter`)
 
 ---
 
@@ -200,9 +200,10 @@ Legend:
 
 ## Search
 
-- [ ] Workspace Search
-- [ ] Project Search
-- [ ] Task Search
+- [x] Workspace Search (`GET /workspaces/:workspaceId/search`)
+- [x] Project Search
+- [x] Task Search
+- [x] Member & Comment Search
 
 ---
 
@@ -210,10 +211,10 @@ Legend:
 
 ## Analytics
 
-- [ ] Project Statistics
-- [ ] Task Statistics
-- [ ] Productivity
-- [ ] Member Activity
+- [x] High-level KPI Summary (`GET /workspaces/:workspaceId/dashboard/summary`)
+- [x] Task Distribution (`GET /workspaces/:workspaceId/dashboard/task-distribution`)
+- [x] Productivity Metrics (`GET /workspaces/:workspaceId/dashboard/productivity`)
+- [x] Member Workload Breakdown (`GET /workspaces/:workspaceId/dashboard/member-workload`)
 
 ---
 
@@ -254,23 +255,50 @@ Legend:
 7. [x] **Backend Architectural Refinement**: Execute items tracked in `.ai/ARCHITECTURAL_REVIEW.md`.
 8. [x] **Phase 8 — Comment API Module**: Implement Comment CRUD on tasks with cursor pagination, mentions, and edit history.
 9. [x] **Phase 9 — Attachment & File Upload Module**: Implement Task Attachment upload, list, delete, and static file serving.
-10. [ ] **Phase 11 — Notification Module**: Implement event-driven notifications for task assignments, mentions, due reminders, and invitations.
+10. [x] **Phase 11 — Notification Module**: Implement event-driven notifications for task assignments, mentions, and invitations.
+11. [x] **Centralized Email Infrastructure Module**: Implement production-ready `EmailModule` with Nodemailer, Handlebars templates, Joi env validation, and SOLID provider abstraction.
+12. [x] **Platform Audit Logging Infrastructure**: Implement `AuditLog` table, `AuditLogService`, `AuditAction` enum, and integrate auth audit events (`USER_REGISTERED`, `EMAIL_VERIFICATION_SENT`, `USER_LOGIN`, `FAILED_LOGIN`, `USER_LOGOUT`).
+13. [x] **Email Verification System**: Implement `VerificationToken` table (SHA-256 token hashing), single-use 24h tokens, `GET /auth/verify-email`, `POST /auth/resend-verification`, login verification rejection, and Prisma transaction operations.
+14. [x] **Forgot Password & Reset Password Flow**: Implement `POST /auth/forgot-password` (anti-enumeration), `POST /auth/reset-password`, 30-minute single-use SHA-256 tokens, refresh token revocation, and audit logging (`PASSWORD_RESET_REQUESTED`, `PASSWORD_RESET_COMPLETED`, `PASSWORD_RESET_TOKEN_INVALID`, `PASSWORD_RESET_TOKEN_EXPIRED`).
+15. [x] **Phase X — Token-Based Workspace Invitation System**: Implement `WorkspaceInvitation` model (7-day SHA-256 tokens), `POST /workspaces/:workspaceId/invitations`, `GET /workspace-invitations/validate`, `POST /workspace-invitations/accept` (transaction member creation & email verification check), `POST /workspace-invitations/decline`, `DELETE /workspaces/:workspaceId/invitations/:id`, and separated WorkspaceActivity & AuditLog logging.
+16. [x] **Google OAuth Authentication**: Implement `OAuthAccount` model, `GoogleStrategy`, `GoogleAuthGuard`, automatic account linking, JWT issuance, `GET /auth/google`, `GET /auth/google/callback`, and audit logging (`GOOGLE_LOGIN`, `GOOGLE_ACCOUNT_CREATED`, `GOOGLE_ACCOUNT_LINKED`).
+17. [x] **Background Email Jobs (BullMQ + Redis)**: Implement `QueueModule` (`@nestjs/bullmq`), `EmailQueueService`, `EmailProcessor`, exponential backoff retries (3 attempts: 1s, 2s, 4s), and refactor `AuthService` and `WorkspaceInvitationService` for non-blocking asynchronous email delivery.
+18. [x] **Phase 12 — Realtime Module**: Implement Socket.IO gateway (`/realtime`), JWT handshake authentication (`WsJwtGuard`), user presence tracking (`user:online`/`user:offline`), room subscriptions (`workspace:id`, `board:id`, `task:id`), and event-driven domain broadcasting (`task.created`, `task.moved`, `task.updated`, `task.deleted`, `comment.created`, `notification.created`).
+19. [x] **Phase 13 — Global Search Module**: Implement workspace-scoped full-text search across Projects, Tasks, Comments, and Members (`GET /workspaces/:workspaceId/search`).
+20. [x] **Phase 14 — Dashboard & Analytics Module**: Implement high-level workspace summary KPIs, task status/priority distribution, productivity throughput, and per-member workload breakdown endpoints (`GET /workspaces/:workspaceId/dashboard/*`).
+21. [x] **Production Audit — Phase 1 Step 1A (Stability & Logic Guardrails)**:
+    - [x] Multer 10MB upload limit & MIME whitelist (`storage.config.ts`, `attachment.controller.ts`).
+    - [x] Collision-resistant workspace slug generation with nanoid suffixes (`slug.util.ts`, `workspace.service.ts`).
+    - [x] Task deletion permission check: only creator or workspace ADMIN/OWNER can delete (`task.service.ts`).
+    - [x] Kanban column move auto-synchronizes `Task.status` and emits `task.moved` realtime event (`move-task.dto.ts`, `task.service.ts`).
+23. [x] **Production Audit — Phase 2 (Daily Contributor Loop & User Identity)**:
+    - [x] User Profile & Password Updates (`PATCH /user/me`, `POST /user/avatar`, `PATCH /user/change-password`, security audit log `PASSWORD_CHANGED`).
+    - [x] "My Tasks" Personal Inbox API (`GET /workspaces/:workspaceId/my-tasks` with grouping by project/priority/status/dueDate and pagination).
+    - [x] Human-Readable Task Keys: Project-scoped sequential keys (`GEN-1`, `SYNC-101`) with automatic project key derivation and dual UUID/Key resolution.
+    - [x] Subtasks & Acceptance Checklists: `TaskChecklist` entity with CRUD, toggle, ordering, and activity logging (`/tasks/:taskId/checklists`).
+    - [x] Task-Level Activity Stream: `GET /tasks/:taskId/activities` for dedicated task modal history tab.
+24. [x] **Production Audit — Phase 3 (Subphase 3A: Project Views & Taxonomy)**:
+    - [x] Task Labels & Custom Color Categorization System (`TaskLabel` model, CRUD, task associations, activity logging via `/workspaces/:workspaceId/labels` and `/tasks/:taskId/labels`).
+    - [x] Project Flat List / Table View API (`GET /projects/:projectId/tasks` with multi-column sorting, status/priority/assignee/label/search filters, pagination, and checklist summary).
+    - [x] Project Archival & Deletion Lifecycle (`DELETE /workspaces/:workspaceId/projects/:projectId` soft-delete and `PATCH /workspaces/:workspaceId/projects/:projectId/restore`).
+25. [x] **Production Audit — Phase 3 (Subphase 3B: Team Governance & Safety)**:
+    - [x] Viewer / Guest Role Implementation (`GUEST` in `WorkspaceRole` enum with read-only and comment-only permissions).
+    - [x] Trash Management & Soft-Delete Restore APIs (`TrashModule`, `GET/POST/DELETE /workspaces/:workspaceId/trash`).
+    - [x] Security Audit Log Feed API (`AuditLogController`, `GET /workspaces/:workspaceId/audit-logs`).
 
 ---
 
 # Next Feature (What to do next)
 
 ```
-Phase 11 — Event-Driven Notification Module
-
-Step 1: Create `src/module/notification` with `NotificationService`, `NotificationController`, `NotificationModule`, and Prisma schema model for `Notification`.
-Step 2: Add Notification Prisma Model (`id`, `userId`, `actorId`, `type`, `title`, `message`, `link`, `isRead`, `createdAt`).
-Step 3: Listen to application events (task assigned, comment mention, task due, workspace invitation) and persist user notifications.
-Step 4: Implement REST Endpoints:
-        - GET   /notifications        (List current user's notifications, paginated)
-        - PATCH /notifications/:id/read  (Mark single notification as read)
-        - PATCH /notifications/read-all  (Mark all user notifications as read)
+Current Sprint: Production Audit — Phase 4 (Agile Scale & Real-Time Polish)
+1. Sprints / Milestones & Dedicated Backlog View (Sprint entity and backlog triage support).
+2. Effort Estimation (Story Points & Estimated Hours on Task + dashboard workload analytics).
+3. Task Bulk Operations (POST /tasks/bulk-update and POST /tasks/bulk-delete).
+4. Socket.IO Redis Adapter Presence (Distributed WebSocket scaling).
+5. Comment Emoji Reactions (CommentReaction entity & toggle endpoints).
 ```
+
 
 ---
 
