@@ -1,13 +1,15 @@
 import {
   Body,
   Controller,
+  Delete,
   Get,
   Param,
   Patch,
   Post,
+  Query,
   UseGuards,
 } from '@nestjs/common';
-import { ApiOperation } from '@nestjs/swagger';
+import { ApiOperation, ApiTags } from '@nestjs/swagger';
 import { CurrentUser } from 'src/common/decorators/get-user.decorator';
 import { ResponseMessage } from 'src/common/decorators/response-message.decorator';
 import { WorkspaceRoles } from 'src/common/decorators/workspace-roles.decorator';
@@ -16,9 +18,11 @@ import type { User } from 'src/common/interfaces/user.interface';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { WorkspaceRole } from '../workspace/enums/workspace-role.enum';
 import { CreateProjectDto } from './dto/create-project.dto';
+import { ProjectTasksQueryDto } from './dto/project-tasks-query.dto';
 import { UpdateProjectDto } from './dto/update-project.dto';
 import { ProjectService } from './project.service';
 
+@ApiTags('Projects')
 @Controller('workspaces/:workspaceId/projects')
 export class ProjectController {
   constructor(private readonly projectService: ProjectService) {}
@@ -68,6 +72,23 @@ export class ProjectController {
     return this.projectService.getProject(workspaceId, projectId);
   }
 
+  // Get Project Tasks (Nested route alias)
+  @Get(':projectId/tasks')
+  @UseGuards(JwtAuthGuard, WorkspaceRoleGuard)
+  @WorkspaceRoles(
+    WorkspaceRole.ADMIN,
+    WorkspaceRole.OWNER,
+    WorkspaceRole.MEMBER,
+  )
+  @ResponseMessage('Project tasks fetched successfully')
+  @ApiOperation({ summary: 'Get flat list of project tasks' })
+  getProjectTasks(
+    @Param('projectId') projectId: string,
+    @Query() query: ProjectTasksQueryDto,
+  ) {
+    return this.projectService.getProjectTasks(projectId, query);
+  }
+
   // Update Project by Workspace Owner or Admin
   @Patch(':projectId')
   @UseGuards(JwtAuthGuard, WorkspaceRoleGuard)
@@ -95,5 +116,33 @@ export class ProjectController {
     @CurrentUser() user: User,
   ) {
     return this.projectService.archiveProject(projectId, workspaceId, user);
+  }
+
+  // Soft Delete Project by workspace owner or admin
+  @Delete(':projectId')
+  @UseGuards(JwtAuthGuard, WorkspaceRoleGuard)
+  @WorkspaceRoles(WorkspaceRole.ADMIN, WorkspaceRole.OWNER)
+  @ResponseMessage('Project deleted successfully')
+  @ApiOperation({ summary: 'Soft delete project' })
+  deleteProject(
+    @Param('projectId') projectId: string,
+    @Param('workspaceId') workspaceId: string,
+    @CurrentUser() user: User,
+  ) {
+    return this.projectService.deleteProject(projectId, workspaceId, user);
+  }
+
+  // Restore Project by workspace owner or admin
+  @Patch(':projectId/restore')
+  @UseGuards(JwtAuthGuard, WorkspaceRoleGuard)
+  @WorkspaceRoles(WorkspaceRole.ADMIN, WorkspaceRole.OWNER)
+  @ResponseMessage('Project restored successfully')
+  @ApiOperation({ summary: 'Restore soft-deleted / archived project' })
+  restoreProject(
+    @Param('projectId') projectId: string,
+    @Param('workspaceId') workspaceId: string,
+    @CurrentUser() user: User,
+  ) {
+    return this.projectService.restoreProject(projectId, workspaceId, user);
   }
 }

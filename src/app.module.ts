@@ -18,6 +18,7 @@ import { CommentModule } from './module/comment/comment.module';
 import { EmailModule } from './module/email/email.module';
 import { PrismaModule } from './module/prisma/prisma.module';
 import { ProjectModule } from './module/project/project.module';
+import { LabelModule } from './module/label/label.module';
 import { TaskChecklistModule } from './module/task-checklist/task-checklist.module';
 import { TaskLinkModule } from './module/task-link/task-link.module';
 import { TaskModule } from './module/task/task.module';
@@ -72,6 +73,7 @@ import { SearchModule } from './module/search/search.module';
     ColumnModule,
     TaskModule,
     TaskChecklistModule,
+    LabelModule,
     CommentModule,
     AttachmentModule,
     TaskLinkModule,

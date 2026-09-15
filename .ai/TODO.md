@@ -277,18 +277,20 @@ Legend:
     - [x] Human-Readable Task Keys: Project-scoped sequential keys (`GEN-1`, `SYNC-101`) with automatic project key derivation and dual UUID/Key resolution.
     - [x] Subtasks & Acceptance Checklists: `TaskChecklist` entity with CRUD, toggle, ordering, and activity logging (`/tasks/:taskId/checklists`).
     - [x] Task-Level Activity Stream: `GET /tasks/:taskId/activities` for dedicated task modal history tab.
+24. [x] **Production Audit — Phase 3 (Subphase 3A: Project Views & Taxonomy)**:
+    - [x] Task Labels & Custom Color Categorization System (`TaskLabel` model, CRUD, task associations, activity logging via `/workspaces/:workspaceId/labels` and `/tasks/:taskId/labels`).
+    - [x] Project Flat List / Table View API (`GET /projects/:projectId/tasks` with multi-column sorting, status/priority/assignee/label/search filters, pagination, and checklist summary).
+    - [x] Project Archival & Deletion Lifecycle (`DELETE /workspaces/:workspaceId/projects/:projectId` soft-delete and `PATCH /workspaces/:workspaceId/projects/:projectId/restore`).
 
 ---
 
 # Next Feature (What to do next)
 
 ```
-Current Sprint: Production Audit — Phase 3 (Planning, Views & Team Governance)
-1. Project Flat List / Table View API (GET /projects/:projectId/tasks with flexible sorting/filtering).
-2. Task Labels & Custom Color Categorization System (TaskLabel model & task relations).
-3. Viewer / Guest Role Implementation (GUEST in WorkspaceRole enum for read-only access).
-4. Trash Management & Soft-Delete Restore APIs (GET/POST/DELETE /workspaces/:workspaceId/trash).
-5. Security Audit Log Feed API (GET /workspaces/:workspaceId/audit-logs).
+Current Sprint: Production Audit — Phase 3 (Subphase 3B: Team Governance & Safety)
+1. Viewer / Guest Role Implementation (GUEST in WorkspaceRole enum for read-only access).
+2. Trash Management & Soft-Delete Restore APIs (GET/POST/DELETE /workspaces/:workspaceId/trash).
+3. Security Audit Log Feed API (GET /workspaces/:workspaceId/audit-logs).
 ```
 
 

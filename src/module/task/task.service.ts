@@ -102,6 +102,7 @@ export class TaskService {
               boardId: true,
             },
           },
+          labels: true,
         },
       });
 
@@ -189,6 +190,7 @@ export class TaskService {
         include: {
           assignee: { select: SAFE_USER_MINIMAL_SELECT },
           creator: { select: SAFE_USER_MINIMAL_SELECT },
+          labels: true,
           checklists: {
             select: {
               id: true,
@@ -249,6 +251,7 @@ export class TaskService {
         },
         assignee: { select: SAFE_USER_MINIMAL_SELECT },
         creator: { select: SAFE_USER_MINIMAL_SELECT },
+        labels: true,
         checklists: {
           orderBy: { order: 'asc' },
           include: {
@@ -382,6 +385,7 @@ export class TaskService {
           },
           assignee: { select: SAFE_USER_MINIMAL_SELECT },
           creator: { select: SAFE_USER_MINIMAL_SELECT },
+          labels: true,
           checklists: {
             select: {
               id: true,
@@ -470,6 +474,7 @@ export class TaskService {
               boardId: true,
             },
           },
+          labels: true,
         },
       });
 

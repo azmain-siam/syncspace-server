@@ -96,6 +96,7 @@ model Workspace {
   projects            Project[]
   workspaceActivities WorkspaceActivity[]
   invitations         WorkspaceInvitation[]
+  labels              TaskLabel[]
 
   @@index([ownerId])
   @@index([deletedAt])
@@ -269,6 +270,7 @@ model Task {
   links               TaskLink[]
   checklists          TaskChecklist[]
   workspaceActivities WorkspaceActivity[]
+  labels              TaskLabel[]
 
   @@unique([columnId, order])
   @@index([columnId])
@@ -297,6 +299,21 @@ model TaskChecklist {
 
   @@index([taskId])
   @@index([taskId, order])
+}
+
+model TaskLabel {
+  id          String   @id @default(uuid())
+  workspaceId String
+  name        String
+  color       String
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  workspace Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  tasks     Task[]
+
+  @@unique([workspaceId, name])
+  @@index([workspaceId])
 }
 
 model Comment {
