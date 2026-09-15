@@ -283,31 +283,46 @@ gantt
     Socket.IO Redis Adapter Presence      :p4_4, 2026-10-29, 3d
 ```
 
-### Action Plan Summary
+### Action Plan & Phase Execution Tracker
 
-#### Phase 1: Launch Blockers & Operational Guardrails (Week 1)
-1. **Sync Kanban Column Moves with `Task.status`** to fix dashboard metrics and filters.
-2. **Flatten Task Child Routes** to eliminate the moving task 404 race condition.
-3. **Add Multer 10MB Limits & MIME Whitelist** to eliminate server Out-Of-Memory (OOM) crash vulnerabilities.
-4. **Fix Workspace Slug Collisions** with nanoid suffixes.
-5. **Restrict Task Deletion** to task creators and workspace admins.
-6. **Implement Onboarding Project Seed** so new signups immediately land on a working Kanban board.
+Legend:
+- ✅ Completed (`[x]`)
+- 🚧 In Progress / Current Sprint (`[-]`)
+- ⏳ Planned (`[ ]`)
 
-#### Phase 2: Daily Contributor Experience (Week 2)
-7. **Implement "My Tasks" API** (`GET /workspaces/:workspaceId/my-tasks`).
-8. **Add Human-Readable Task Keys** (`SYNC-101`) for Git commits and team communication.
-9. **Introduce Subtasks & Checklists** for acceptance criteria tracking.
-10. **Add Task-Level Activity Stream** (`GET /tasks/:taskId/activities`).
-11. **Implement User Profile & Password Updates** (`PATCH /user/me`, `PATCH /user/change-password`).
+---
 
-#### Phase 3: Planning, Views & Governance (Week 3)
-12. **Project Flat List View API** (`GET /projects/:projectId/tasks`).
-13. **Task Labels & Color System** for domain categorization.
-14. **Introduce `VIEWER` / `GUEST` Role** for agency client access.
-15. **Build Trash Management & Restore APIs** (`GET/POST /workspaces/:id/trash`).
+#### Phase 1: Core Reliability, Guardrails & Shallow REST Routes (Status: ✅ Completed)
+- [x] **1. Kanban Status Auto-Synchronization:** Auto-sync `Task.status` from destination column title in `moveTask` and emit `task.moved` realtime event (`move-task.dto.ts`, `task.service.ts`).
+- [x] **2. Shallow REST Routes Overhaul:** Flatten task, comment, attachment, and link routes to `/tasks/:taskId/*` and `/columns/:columnId/tasks`; eliminate 8-level nesting and column-mismatch 404 race condition (`entity-validation.service.ts`, `workspace-role.guard.ts`, `task.controller.ts`, `comment.controller.ts`, `attachment.controller.ts`, `task-link.controller.ts`).
+- [x] **3. File Upload OOM Protection & MIME Whitelist:** Configure 10MB file limit and safe MIME type filtering in Multer to prevent process crashes (`storage.config.ts`, `attachment.controller.ts`).
+- [x] **4. Workspace Slug Collision Resistance:** Implement collision-resistant slug generation with random alphanumeric suffixes to prevent `P2002` duplicate errors (`slug.util.ts`, `workspace.service.ts`).
+- [x] **5. Task Deletion Authorization:** Enforce role checks so only task creators, workspace admins, and owners can delete tasks (`task.service.ts`).
+- [x] **6. 60-Second Onboarding Project Seed:** Auto-seed a default `"General"` project (`GEN`), `"Main Board"`, standard columns (`To Do`, `In Progress`, `Done`), and starter guide cards on workspace creation (`workspace.service.ts`).
 
-#### Phase 4: Agile Scale & Real-Time Polish (Week 4)
-16. **Sprints / Milestones & Backlog Management** to prevent board clutter.
-17. **Story Points & Capacity Metrics** to replace raw task count workload estimation.
-18. **Task Bulk Operations** (`bulk-update`, `bulk-delete`).
-19. **Socket.IO Redis Adapter** for distributed presence and horizontal scaling.
+---
+
+#### Phase 2: Daily Contributor Loop & User Identity (Status: 🚧 Next Sprint)
+- [ ] **7. User Profile & Identity Updates:** Implement `PATCH /user/me` (bio, display name, timezone), `PATCH /user/change-password`, and avatar upload with Multer (`user.controller.ts`, `user.service.ts`).
+- [ ] **8. "My Tasks" Personal Inbox API:** Create `GET /workspaces/:workspaceId/my-tasks` with grouping and filtering by `dueDate`, `priority`, `status`, and `project` (`task.service.ts`, `task.controller.ts`).
+- [ ] **9. Human-Readable Task Keys:** Add project-scoped auto-incrementing identifiers (e.g. `GEN-1`, `SYNC-101`) for Git commits, PR titles, and team standups (`prisma.schema`, `task.service.ts`).
+- [ ] **10. Subtasks & Acceptance Checklists:** Implement `ChecklistItem` entity with interactive toggle, reorder, and CRUD endpoints (`task-checklist.service.ts`, `task-checklist.controller.ts`).
+- [ ] **11. Task-Level Activity Stream:** Expose `GET /tasks/:taskId/activities` so task detail modals can display a dedicated **History / Audit** tab (`activity.controller.ts`, `activity.service.ts`).
+
+---
+
+#### Phase 3: Planning, Views & Team Governance (Status: ⏳ Planned)
+- [ ] **12. Project Flat List / Table View API:** Implement `GET /projects/:projectId/tasks` with flexible sorting, multi-column filtering, and pagination (`task.service.ts`, `task.controller.ts`).
+- [ ] **13. Task Labels & Categorization System:** Create `TaskLabel` model with custom color tagging and many-to-many task associations (`label.service.ts`, `label.controller.ts`).
+- [ ] **14. Viewer / Guest Role Implementation:** Introduce `GUEST` role in `WorkspaceRole` enum for external client read-only / restricted access (`workspace-role.guard.ts`).
+- [ ] **15. Trash Management & Restore APIs:** Implement workspace-level soft-delete recovery and permanent purge endpoints (`GET/POST/DELETE /workspaces/:workspaceId/trash`).
+- [ ] **16. Security Audit Log Feed:** Expose `GET /workspaces/:workspaceId/audit-logs` for workspace owners and admins (`audit-log.controller.ts`).
+
+---
+
+#### Phase 4: Agile Scale & Real-Time Polish (Status: ⏳ Planned)
+- [ ] **17. Sprints / Milestones & Dedicated Backlog View:** Create `Sprint` entity and backlog triage support to prevent board clutter (`sprint.service.ts`, `sprint.controller.ts`).
+- [ ] **18. Effort Estimation (Story Points & Estimated Hours):** Add capacity planning fields to `Task` and update dashboard workload analytics (`task.service.ts`, `dashboard.service.ts`).
+- [ ] **19. Task Bulk Operations:** Implement `POST /tasks/bulk-update` and `POST /tasks/bulk-delete` for rapid backlog grooming (`task.service.ts`, `task.controller.ts`).
+- [ ] **20. Socket.IO Redis Adapter Presence:** Configure distributed Redis adapter (`@socket.io/redis-adapter`) for scalable presence tracking across multiple server instances (`realtime.gateway.ts`).
+- [ ] **21. Comment Emoji Reactions:** Implement `CommentReaction` model and reaction toggle endpoints (`comment.service.ts`, `comment.controller.ts`).
