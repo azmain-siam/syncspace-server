@@ -69,6 +69,7 @@ export class AttachmentController {
     WorkspaceRole.OWNER,
     WorkspaceRole.ADMIN,
     WorkspaceRole.MEMBER,
+    WorkspaceRole.GUEST,
   )
   @ResponseMessage('Task attachments fetched successfully')
   @ApiOperation({ summary: 'Get all attachments for a task' })

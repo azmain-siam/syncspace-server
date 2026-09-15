@@ -35,6 +35,7 @@ export class TaskController {
     WorkspaceRole.OWNER,
     WorkspaceRole.ADMIN,
     WorkspaceRole.MEMBER,
+    WorkspaceRole.GUEST,
   )
   @ResponseMessage('Personal workspace tasks fetched successfully')
   @ApiOperation({
@@ -71,6 +72,7 @@ export class TaskController {
     WorkspaceRole.OWNER,
     WorkspaceRole.ADMIN,
     WorkspaceRole.MEMBER,
+    WorkspaceRole.GUEST,
   )
   @ResponseMessage('Column tasks fetched successfully')
   @ApiOperation({ summary: 'Get all tasks in board column' })
@@ -84,6 +86,7 @@ export class TaskController {
     WorkspaceRole.OWNER,
     WorkspaceRole.ADMIN,
     WorkspaceRole.MEMBER,
+    WorkspaceRole.GUEST,
   )
   @ResponseMessage('Task fetched successfully')
   @ApiOperation({ summary: 'Get single task details' })

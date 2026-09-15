@@ -48,6 +48,7 @@ export class LabelController {
     WorkspaceRole.OWNER,
     WorkspaceRole.ADMIN,
     WorkspaceRole.MEMBER,
+    WorkspaceRole.GUEST,
   )
   @ResponseMessage('Labels fetched successfully')
   @ApiOperation({ summary: 'Get all labels in workspace' })

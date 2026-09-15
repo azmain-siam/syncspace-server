@@ -33,6 +33,7 @@ export class CommentController {
     WorkspaceRole.OWNER,
     WorkspaceRole.ADMIN,
     WorkspaceRole.MEMBER,
+    WorkspaceRole.GUEST,
   )
   @ResponseMessage('Comment created successfully')
   @ApiOperation({
@@ -52,6 +53,7 @@ export class CommentController {
     WorkspaceRole.OWNER,
     WorkspaceRole.ADMIN,
     WorkspaceRole.MEMBER,
+    WorkspaceRole.GUEST,
   )
   @ResponseMessage('Task comments fetched successfully')
   @ApiOperation({ summary: 'Get task comments using cursor-based pagination' })
@@ -68,6 +70,7 @@ export class CommentController {
     WorkspaceRole.OWNER,
     WorkspaceRole.ADMIN,
     WorkspaceRole.MEMBER,
+    WorkspaceRole.GUEST,
   )
   @ResponseMessage('Comment fetched successfully')
   @ApiOperation({ summary: 'Get single comment details' })
@@ -84,6 +87,7 @@ export class CommentController {
     WorkspaceRole.OWNER,
     WorkspaceRole.ADMIN,
     WorkspaceRole.MEMBER,
+    WorkspaceRole.GUEST,
   )
   @ResponseMessage('Comment updated successfully')
   @ApiOperation({ summary: 'Update comment content' })
@@ -102,6 +106,7 @@ export class CommentController {
     WorkspaceRole.OWNER,
     WorkspaceRole.ADMIN,
     WorkspaceRole.MEMBER,
+    WorkspaceRole.GUEST,
   )
   @ResponseMessage('Comment deleted successfully')
   @ApiOperation({ summary: 'Soft delete comment' })

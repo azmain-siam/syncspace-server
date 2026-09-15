@@ -62,17 +62,21 @@ model VerificationToken {
 }
 
 model AuditLog {
-  id        String  @id @default(uuid())
-  actorId   String?
-  action    String
-  ipAddress String?
-  userAgent String?
-  metadata  Json?
+  id          String   @id @default(uuid())
+  workspaceId String?
+  actorId     String?
+  action      String
+  ipAddress   String?
+  userAgent   String?
+  metadata    Json?
 
   createdAt DateTime @default(now())
 
-  actor User? @relation("UserAuditLogs", fields: [actorId], references: [id], onDelete: SetNull)
+  actor     User?      @relation("UserAuditLogs", fields: [actorId], references: [id], onDelete: SetNull)
+  workspace Workspace? @relation(fields: [workspaceId], references: [id], onDelete: SetNull)
 
+  @@index([workspaceId])
+  @@index([workspaceId, createdAt])
   @@index([actorId])
   @@index([action])
   @@index([createdAt])
@@ -97,6 +101,7 @@ model Workspace {
   workspaceActivities WorkspaceActivity[]
   invitations         WorkspaceInvitation[]
   labels              TaskLabel[]
+  auditLogs           AuditLog[]
 
   @@index([ownerId])
   @@index([deletedAt])
@@ -399,6 +404,7 @@ enum WorkspaceRole {
   OWNER
   ADMIN
   MEMBER
+  GUEST
 }
 
 enum WorkspaceVisibility {

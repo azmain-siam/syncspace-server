@@ -35,6 +35,7 @@ export class ActivityController {
     WorkspaceRole.OWNER,
     WorkspaceRole.ADMIN,
     WorkspaceRole.MEMBER,
+    WorkspaceRole.GUEST,
   )
   @ResponseMessage('Task activities fetched successfully')
   @ApiOperation({

@@ -281,16 +281,22 @@ Legend:
     - [x] Task Labels & Custom Color Categorization System (`TaskLabel` model, CRUD, task associations, activity logging via `/workspaces/:workspaceId/labels` and `/tasks/:taskId/labels`).
     - [x] Project Flat List / Table View API (`GET /projects/:projectId/tasks` with multi-column sorting, status/priority/assignee/label/search filters, pagination, and checklist summary).
     - [x] Project Archival & Deletion Lifecycle (`DELETE /workspaces/:workspaceId/projects/:projectId` soft-delete and `PATCH /workspaces/:workspaceId/projects/:projectId/restore`).
+25. [x] **Production Audit — Phase 3 (Subphase 3B: Team Governance & Safety)**:
+    - [x] Viewer / Guest Role Implementation (`GUEST` in `WorkspaceRole` enum with read-only and comment-only permissions).
+    - [x] Trash Management & Soft-Delete Restore APIs (`TrashModule`, `GET/POST/DELETE /workspaces/:workspaceId/trash`).
+    - [x] Security Audit Log Feed API (`AuditLogController`, `GET /workspaces/:workspaceId/audit-logs`).
 
 ---
 
 # Next Feature (What to do next)
 
 ```
-Current Sprint: Production Audit — Phase 3 (Subphase 3B: Team Governance & Safety)
-1. Viewer / Guest Role Implementation (GUEST in WorkspaceRole enum for read-only access).
-2. Trash Management & Soft-Delete Restore APIs (GET/POST/DELETE /workspaces/:workspaceId/trash).
-3. Security Audit Log Feed API (GET /workspaces/:workspaceId/audit-logs).
+Current Sprint: Production Audit — Phase 4 (Agile Scale & Real-Time Polish)
+1. Sprints / Milestones & Dedicated Backlog View (Sprint entity and backlog triage support).
+2. Effort Estimation (Story Points & Estimated Hours on Task + dashboard workload analytics).
+3. Task Bulk Operations (POST /tasks/bulk-update and POST /tasks/bulk-delete).
+4. Socket.IO Redis Adapter Presence (Distributed WebSocket scaling).
+5. Comment Emoji Reactions (CommentReaction entity & toggle endpoints).
 ```
 
 

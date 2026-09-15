@@ -31,6 +31,7 @@ export class TaskChecklistController {
     WorkspaceRole.OWNER,
     WorkspaceRole.ADMIN,
     WorkspaceRole.MEMBER,
+    WorkspaceRole.GUEST,
   )
   @ResponseMessage('Task checklist items fetched successfully')
   @ApiOperation({ summary: 'Get all checklist items for a task' })

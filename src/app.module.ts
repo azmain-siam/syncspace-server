@@ -32,6 +32,7 @@ import { NotificationModule } from './module/notification/notification.module';
 import { QueueModule } from './module/queue/queue.module';
 import { RealtimeModule } from './module/realtime/realtime.module';
 import { SearchModule } from './module/search/search.module';
+import { TrashModule } from './module/trash/trash.module';
 
 @Module({
   imports: [
@@ -79,6 +80,7 @@ import { SearchModule } from './module/search/search.module';
     TaskLinkModule,
     NotificationModule,
     AuditLogModule,
+    TrashModule,
     SearchModule,
     DashboardModule,
   ],

@@ -311,12 +311,12 @@ Legend:
 
 ---
 
-#### Phase 3: Planning, Views & Team Governance (Status: 🚧 In Progress — Subphase 3A Complete)
+#### Phase 3: Planning, Views & Team Governance (Status: ✅ Completed)
 - [x] **12. Project Flat List / Table View API:** Implement `GET /projects/:projectId/tasks` with flexible sorting, multi-column filtering, and pagination (`project.service.ts`, `project.controller.ts`, `project-tasks.controller.ts`).
 - [x] **13. Task Labels & Categorization System:** Create `TaskLabel` model with custom color tagging and many-to-many task associations (`label.service.ts`, `label.controller.ts`, `label.module.ts`).
-- [ ] **14. Viewer / Guest Role Implementation:** Introduce `GUEST` role in `WorkspaceRole` enum for external client read-only / restricted access (`workspace-role.guard.ts`).
-- [ ] **15. Trash Management & Restore APIs:** Implement workspace-level soft-delete recovery and permanent purge endpoints (`GET/POST/DELETE /workspaces/:workspaceId/trash`).
-- [ ] **16. Security Audit Log Feed:** Expose `GET /workspaces/:workspaceId/audit-logs` for workspace owners and admins (`audit-log.controller.ts`).
+- [x] **14. Viewer / Guest Role Implementation:** Introduce `GUEST` role in `WorkspaceRole` enum for external client read-only / restricted access (`workspace-role.enum.ts`, `workspace-role.guard.ts`).
+- [x] **15. Trash Management & Restore APIs:** Implement workspace-level soft-delete recovery and permanent purge endpoints (`trash.service.ts`, `trash.controller.ts`, `trash.module.ts`).
+- [x] **16. Security Audit Log Feed:** Expose `GET /workspaces/:workspaceId/audit-logs` for workspace owners and admins (`audit-log.service.ts`, `audit-log.controller.ts`, `audit-log.module.ts`).
 
 ---
 

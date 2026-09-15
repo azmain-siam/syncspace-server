@@ -48,6 +48,7 @@ export class ProjectController {
     WorkspaceRole.ADMIN,
     WorkspaceRole.OWNER,
     WorkspaceRole.MEMBER,
+    WorkspaceRole.GUEST,
   )
   @ResponseMessage('Projects fetched successfully')
   @ApiOperation({ summary: 'Get projects by workspace member' })
@@ -62,6 +63,7 @@ export class ProjectController {
     WorkspaceRole.ADMIN,
     WorkspaceRole.OWNER,
     WorkspaceRole.MEMBER,
+    WorkspaceRole.GUEST,
   )
   @ResponseMessage('Project fetched successfully')
   @ApiOperation({ summary: 'Get project by workspace member' })
@@ -79,6 +81,7 @@ export class ProjectController {
     WorkspaceRole.ADMIN,
     WorkspaceRole.OWNER,
     WorkspaceRole.MEMBER,
+    WorkspaceRole.GUEST,
   )
   @ResponseMessage('Project tasks fetched successfully')
   @ApiOperation({ summary: 'Get flat list of project tasks' })

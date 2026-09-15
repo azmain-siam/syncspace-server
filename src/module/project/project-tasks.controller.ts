@@ -20,6 +20,7 @@ export class ProjectTasksController {
     WorkspaceRole.OWNER,
     WorkspaceRole.ADMIN,
     WorkspaceRole.MEMBER,
+    WorkspaceRole.GUEST,
   )
   @ResponseMessage('Project tasks fetched successfully')
   @ApiOperation({
