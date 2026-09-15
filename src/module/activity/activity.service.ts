@@ -1,6 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
 import { SAFE_USER_MINIMAL_SELECT } from 'src/common/constants/prisma-selects.constant';
+import { EntityValidationService } from 'src/common/services/entity-validation.service';
 import { calculatePaginationMeta } from 'src/common/utils/pagination.util';
 import { PrismaService } from '../prisma/prisma.service';
 import { ActivityQueryDto } from './dto/activity-query.dto';
@@ -18,7 +19,10 @@ export interface CreateActivityInput {
 
 @Injectable()
 export class ActivityService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly entityValidationService: EntityValidationService,
+  ) {}
 
   // Create activity log (supports transaction or direct DB call)
   async createActivityLog(
@@ -73,6 +77,41 @@ export class ActivityService {
           workspaceId,
         },
       }),
+    ]);
+
+    return {
+      activities,
+      meta: calculatePaginationMeta(total, page, limit),
+    };
+  }
+
+  // Get task-specific activities for task modal history tab (paginated)
+  async getTaskActivities(taskId: string, query: ActivityQueryDto) {
+    const task = await this.entityValidationService.verifyTaskById(taskId);
+
+    const page = query.page ?? 1;
+    const limit = query.limit ?? 20;
+    const skip = (page - 1) * limit;
+
+    const where: Prisma.WorkspaceActivityWhereInput = {
+      taskId: task.id,
+    };
+
+    const [activities, total] = await Promise.all([
+      this.prisma.workspaceActivity.findMany({
+        where,
+        orderBy: {
+          createdAt: 'desc',
+        },
+        skip,
+        take: limit,
+        include: {
+          actor: {
+            select: SAFE_USER_MINIMAL_SELECT,
+          },
+        },
+      }),
+      this.prisma.workspaceActivity.count({ where }),
     ]);
 
     return {

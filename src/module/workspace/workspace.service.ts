@@ -69,6 +69,8 @@ export class WorkspaceService {
         data: {
           workspaceId: workspace.id,
           title: 'General',
+          key: 'GEN',
+          taskCounter: 2,
           slug: 'general',
           description: 'Default project for team collaboration',
           createdById: userId,
@@ -111,6 +113,8 @@ export class WorkspaceService {
       await tx.task.create({
         data: {
           columnId: todoCol.id,
+          key: 'GEN-1',
+          taskNumber: 1,
           createdBy: userId,
           assigneeId: userId,
           title: 'Welcome to SyncSpace! 👋',
@@ -125,6 +129,8 @@ export class WorkspaceService {
       await tx.task.create({
         data: {
           columnId: todoCol.id,
+          key: 'GEN-2',
+          taskNumber: 2,
           createdBy: userId,
           assigneeId: userId,
           title: 'Try moving this card to "In Progress" 🚀',

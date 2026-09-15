@@ -59,9 +59,9 @@ Legend:
 ## User
 
 - [x] Profile (`GET /api/v1/user/me`)
-- [ ] Update Profile
-- [ ] Avatar Upload
-- [ ] Change Password
+- [x] Update Profile (`PATCH /api/v1/user/me`)
+- [x] Avatar Upload (`POST /api/v1/user/avatar`)
+- [x] Change Password (`PATCH /api/v1/user/change-password`)
 
 ---
 
@@ -271,21 +271,24 @@ Legend:
     - [x] Collision-resistant workspace slug generation with nanoid suffixes (`slug.util.ts`, `workspace.service.ts`).
     - [x] Task deletion permission check: only creator or workspace ADMIN/OWNER can delete (`task.service.ts`).
     - [x] Kanban column move auto-synchronizes `Task.status` and emits `task.moved` realtime event (`move-task.dto.ts`, `task.service.ts`).
-22. [x] **Production Audit — Phase 1 Step 1B (Onboarding & Shallow REST Routes)**:
-    - [x] Workspace Onboarding Starter Seed: Auto-seed "General" project, "Main Board", columns ("To Do", "In Progress", "Done"), and starter guide tasks on workspace creation (`workspace.service.ts`).
-    - [x] Shallow REST Routes for Tasks (`/columns/:columnId/tasks`, `/tasks/:taskId`, `/tasks/:taskId/move`), Comments (`/tasks/:taskId/comments`), Attachments (`/tasks/:taskId/attachments`), and Links (`/tasks/:taskId/links`).
-    - [x] Dynamic RBAC Resolution in `WorkspaceRoleGuard` (queries DB to resolve workspaceId from `taskId`, `columnId`, or `projectId` when shallow routes are called).
-    - [x] Elimination of column-mismatch 404 race condition during task card moves (`verifyTaskById` & `verifyColumnById`).
+23. [x] **Production Audit — Phase 2 (Daily Contributor Loop & User Identity)**:
+    - [x] User Profile & Password Updates (`PATCH /user/me`, `POST /user/avatar`, `PATCH /user/change-password`, security audit log `PASSWORD_CHANGED`).
+    - [x] "My Tasks" Personal Inbox API (`GET /workspaces/:workspaceId/my-tasks` with grouping by project/priority/status/dueDate and pagination).
+    - [x] Human-Readable Task Keys: Project-scoped sequential keys (`GEN-1`, `SYNC-101`) with automatic project key derivation and dual UUID/Key resolution.
+    - [x] Subtasks & Acceptance Checklists: `TaskChecklist` entity with CRUD, toggle, ordering, and activity logging (`/tasks/:taskId/checklists`).
+    - [x] Task-Level Activity Stream: `GET /tasks/:taskId/activities` for dedicated task modal history tab.
 
 ---
 
 # Next Feature (What to do next)
 
 ```
-Current Sprint: Production Audit — Phase 2 (Team Collaboration & Identity)
-1. User Profile Management (GET/PATCH /api/v1/users/profile, upload avatar with Multer).
-2. Direct Task Assignment email notification queue job.
-3. System Activity Logging on Kanban column create/reorder/delete.
+Current Sprint: Production Audit — Phase 3 (Planning, Views & Team Governance)
+1. Project Flat List / Table View API (GET /projects/:projectId/tasks with flexible sorting/filtering).
+2. Task Labels & Custom Color Categorization System (TaskLabel model & task relations).
+3. Viewer / Guest Role Implementation (GUEST in WorkspaceRole enum for read-only access).
+4. Trash Management & Soft-Delete Restore APIs (GET/POST/DELETE /workspaces/:workspaceId/trash).
+5. Security Audit Log Feed API (GET /workspaces/:workspaceId/audit-logs).
 ```
 
 

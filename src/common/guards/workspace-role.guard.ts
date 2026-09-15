@@ -31,8 +31,13 @@ export class WorkspaceRoleGuard implements CanActivate {
 
     if (!workspaceId) {
       if (request.params.taskId) {
-        const task = await this.prisma.task.findUnique({
-          where: { id: request.params.taskId },
+        const taskId = String(request.params.taskId);
+        const isUuid =
+          /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(
+            taskId,
+          );
+        const task = await this.prisma.task.findFirst({
+          where: isUuid ? { id: taskId } : { key: taskId.toUpperCase() },
           select: {
             column: {
               select: {

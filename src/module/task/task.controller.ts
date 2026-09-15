@@ -19,6 +19,7 @@ import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { WorkspaceRole } from '../workspace/enums/workspace-role.enum';
 import { CreateTaskDto } from './dto/create-task.dto';
 import { MoveTaskDto } from './dto/move-task.dto';
+import { MyTasksQueryDto } from './dto/my-tasks-query.dto';
 import { TaskQueryDto } from './dto/task-query.dto';
 import { UpdateTaskDto } from './dto/update-task.dto';
 import { TaskService } from './task.service';
@@ -27,6 +28,25 @@ import { TaskService } from './task.service';
 @Controller()
 export class TaskController {
   constructor(private readonly taskService: TaskService) {}
+
+  @Get('workspaces/:workspaceId/my-tasks')
+  @UseGuards(JwtAuthGuard, WorkspaceRoleGuard)
+  @WorkspaceRoles(
+    WorkspaceRole.OWNER,
+    WorkspaceRole.ADMIN,
+    WorkspaceRole.MEMBER,
+  )
+  @ResponseMessage('Personal workspace tasks fetched successfully')
+  @ApiOperation({
+    summary: 'Get all tasks assigned to current user across the workspace',
+  })
+  getMyTasks(
+    @Param('workspaceId') workspaceId: string,
+    @Query() query: MyTasksQueryDto,
+    @CurrentUser() user: User,
+  ) {
+    return this.taskService.getMyTasks(workspaceId, query, user);
+  }
 
   @Post('columns/:columnId/tasks')
   @UseGuards(JwtAuthGuard, WorkspaceRoleGuard)

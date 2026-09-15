@@ -302,16 +302,16 @@ Legend:
 
 ---
 
-#### Phase 2: Daily Contributor Loop & User Identity (Status: 🚧 Next Sprint)
-- [ ] **7. User Profile & Identity Updates:** Implement `PATCH /user/me` (bio, display name, timezone), `PATCH /user/change-password`, and avatar upload with Multer (`user.controller.ts`, `user.service.ts`).
-- [ ] **8. "My Tasks" Personal Inbox API:** Create `GET /workspaces/:workspaceId/my-tasks` with grouping and filtering by `dueDate`, `priority`, `status`, and `project` (`task.service.ts`, `task.controller.ts`).
-- [ ] **9. Human-Readable Task Keys:** Add project-scoped auto-incrementing identifiers (e.g. `GEN-1`, `SYNC-101`) for Git commits, PR titles, and team standups (`prisma.schema`, `task.service.ts`).
-- [ ] **10. Subtasks & Acceptance Checklists:** Implement `ChecklistItem` entity with interactive toggle, reorder, and CRUD endpoints (`task-checklist.service.ts`, `task-checklist.controller.ts`).
-- [ ] **11. Task-Level Activity Stream:** Expose `GET /tasks/:taskId/activities` so task detail modals can display a dedicated **History / Audit** tab (`activity.controller.ts`, `activity.service.ts`).
+#### Phase 2: Daily Contributor Loop & User Identity (Status: ✅ Completed)
+- [x] **7. User Profile & Identity Updates:** Implement `PATCH /user/me` (bio, display name, timezone), `PATCH /user/change-password`, and avatar upload with Multer (`user.controller.ts`, `user.service.ts`).
+- [x] **8. "My Tasks" Personal Inbox API:** Create `GET /workspaces/:workspaceId/my-tasks` with grouping and filtering by `dueDate`, `priority`, `status`, and `project` (`task.service.ts`, `task.controller.ts`).
+- [x] **9. Human-Readable Task Keys:** Add project-scoped auto-incrementing identifiers (e.g. `GEN-1`, `SYNC-101`) for Git commits, PR titles, and team standups (`prisma.schema`, `task.service.ts`).
+- [x] **10. Subtasks & Acceptance Checklists:** Implement `ChecklistItem` entity with interactive toggle, reorder, and CRUD endpoints (`task-checklist.service.ts`, `task-checklist.controller.ts`).
+- [x] **11. Task-Level Activity Stream:** Expose `GET /tasks/:taskId/activities` so task detail modals can display a dedicated **History / Audit** tab (`activity.controller.ts`, `activity.service.ts`).
 
 ---
 
-#### Phase 3: Planning, Views & Team Governance (Status: ⏳ Planned)
+#### Phase 3: Planning, Views & Team Governance (Status: 🚧 Next Sprint)
 - [ ] **12. Project Flat List / Table View API:** Implement `GET /projects/:projectId/tasks` with flexible sorting, multi-column filtering, and pagination (`task.service.ts`, `task.controller.ts`).
 - [ ] **13. Task Labels & Categorization System:** Create `TaskLabel` model with custom color tagging and many-to-many task associations (`label.service.ts`, `label.controller.ts`).
 - [ ] **14. Viewer / Guest Role Implementation:** Introduce `GUEST` role in `WorkspaceRole` enum for external client read-only / restricted access (`workspace-role.guard.ts`).

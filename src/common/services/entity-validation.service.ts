@@ -103,11 +103,16 @@ export class EntityValidationService {
     return member;
   }
 
-  // Verify task exists by taskId regardless of column movement (robust against race conditions)
-  async verifyTaskById(taskId: string) {
+  // Verify task exists by taskId or key (e.g. GEN-1) regardless of column movement (robust against race conditions)
+  async verifyTaskById(taskIdOrKey: string) {
+    const isUuid =
+      /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(
+        taskIdOrKey,
+      );
+
     const task = await this.prisma.task.findFirst({
       where: {
-        id: taskId,
+        ...(isUuid ? { id: taskIdOrKey } : { key: taskIdOrKey.toUpperCase() }),
         deletedAt: null,
         column: {
           board: {
@@ -130,6 +135,7 @@ export class EntityValidationService {
                     id: true,
                     workspaceId: true,
                     title: true,
+                    key: true,
                   },
                 },
               },
@@ -168,6 +174,8 @@ export class EntityValidationService {
                 id: true,
                 workspaceId: true,
                 title: true,
+                key: true,
+                taskCounter: true,
               },
             },
           },
