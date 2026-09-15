@@ -16,7 +16,11 @@ import { ResponseMessage } from 'src/common/decorators/response-message.decorato
 import { WorkspaceRoles } from 'src/common/decorators/workspace-roles.decorator';
 import { WorkspaceRoleGuard } from 'src/common/guards/workspace-role.guard';
 import type { User } from 'src/common/interfaces/user.interface';
-import { memoryStorageConfig } from 'src/config/storage.config';
+import {
+  attachmentFileFilter,
+  MAX_FILE_SIZE,
+  memoryStorageConfig,
+} from 'src/config/storage.config';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { WorkspaceRole } from '../workspace/enums/workspace-role.enum';
 import { AttachmentService } from './attachment.service';
@@ -39,6 +43,10 @@ export class AttachmentController {
   @UseInterceptors(
     FileInterceptor('file', {
       storage: memoryStorageConfig,
+      limits: {
+        fileSize: MAX_FILE_SIZE,
+      },
+      fileFilter: attachmentFileFilter,
     }),
   )
   @ApiConsumes('multipart/form-data')

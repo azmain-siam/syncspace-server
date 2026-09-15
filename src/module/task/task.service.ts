@@ -1,6 +1,11 @@
-import { Injectable } from '@nestjs/common';
+import { ForbiddenException, Injectable } from '@nestjs/common';
 import { EventEmitter2 } from '@nestjs/event-emitter';
-import { Prisma, TaskPriority, TaskStatus } from '@prisma/client';
+import {
+  Prisma,
+  TaskPriority,
+  TaskStatus,
+  WorkspaceRole,
+} from '@prisma/client';
 import { SAFE_USER_MINIMAL_SELECT } from 'src/common/constants/prisma-selects.constant';
 import { User } from 'src/common/interfaces/user.interface';
 import { EntityValidationService } from 'src/common/services/entity-validation.service';
@@ -292,7 +297,41 @@ export class TaskService {
       dto.targetColumnId,
     );
 
-    return this.prisma.$transaction(async (tx) => {
+    // Infer or use explicitly provided status
+    let newStatus = dto.status;
+    if (!newStatus) {
+      const colTitle = targetColumn.title.trim().toLowerCase();
+      if (
+        colTitle === 'done' ||
+        colTitle === 'completed' ||
+        colTitle === 'finished' ||
+        colTitle === 'closed'
+      ) {
+        newStatus = TaskStatus.DONE;
+      } else if (
+        colTitle === 'in progress' ||
+        colTitle === 'in-progress' ||
+        colTitle === 'doing' ||
+        colTitle === 'active'
+      ) {
+        newStatus = TaskStatus.IN_PROGRESS;
+      } else if (
+        colTitle === 'review' ||
+        colTitle === 'in review' ||
+        colTitle === 'qa' ||
+        colTitle === 'testing'
+      ) {
+        newStatus = TaskStatus.REVIEW;
+      } else if (
+        colTitle === 'to do' ||
+        colTitle === 'todo' ||
+        colTitle === 'backlog'
+      ) {
+        newStatus = TaskStatus.TODO;
+      }
+    }
+
+    const movedTask = await this.prisma.$transaction(async (tx) => {
       // Step A: Temporarily set moving task's order to negative offset
       await tx.task.update({
         where: { id: taskId },
@@ -326,12 +365,13 @@ export class TaskService {
       }
       await Promise.all(updatePromises);
 
-      // Step D: Place moving task into target column and target order
-      const movedTask = await tx.task.update({
+      // Step D: Place moving task into target column, target order, and synced status
+      const updated = await tx.task.update({
         where: { id: taskId },
         data: {
           columnId: dto.targetColumnId,
           order: dto.targetOrder,
+          ...(newStatus ? { status: newStatus } : {}),
         },
         include: {
           column: { select: { id: true, title: true } },
@@ -344,19 +384,31 @@ export class TaskService {
         actorId: currentUser.id,
         projectId,
         boardId,
-        taskId: movedTask.id,
+        taskId: updated.id,
         action: ActivityAction.TASK_MOVED,
-        description: `${currentUser.name} moved task ${movedTask.title} to ${targetColumn.title}`,
+        description: `${currentUser.name} moved task ${updated.title} to ${targetColumn.title}`,
         metadata: {
-          taskId: movedTask.id,
+          taskId: updated.id,
           fromColumnId: columnId,
           toColumnId: dto.targetColumnId,
           order: dto.targetOrder,
+          status: updated.status,
         },
       });
 
-      return movedTask;
+      return updated;
     });
+
+    this.eventEmitter.emit('task.moved', {
+      taskId: movedTask.id,
+      sourceColumnId: columnId,
+      destinationColumnId: dto.targetColumnId,
+      newOrder: dto.targetOrder,
+      boardId,
+      workspaceId,
+    });
+
+    return movedTask;
   }
 
   // Delete (Soft delete) Task
@@ -375,6 +427,28 @@ export class TaskService {
       columnId,
       taskId,
     );
+
+    // Enforce deletion permission: creator or workspace ADMIN/OWNER
+    const member = await this.prisma.workspaceMember.findUnique({
+      where: {
+        workspaceId_userId: {
+          workspaceId,
+          userId: currentUser.id,
+        },
+      },
+    });
+
+    const isPrivileged =
+      member &&
+      (member.role === WorkspaceRole.OWNER ||
+        member.role === WorkspaceRole.ADMIN);
+    const isCreator = task.createdBy === currentUser.id;
+
+    if (!isPrivileged && !isCreator) {
+      throw new ForbiddenException(
+        'You do not have permission to delete this task',
+      );
+    }
 
     return this.prisma.$transaction(async (tx) => {
       await tx.task.update({

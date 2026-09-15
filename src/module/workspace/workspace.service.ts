@@ -7,7 +7,7 @@ import {
 import { WorkspaceRole } from '@prisma/client';
 import { SAFE_USER_MINIMAL_SELECT } from 'src/common/constants/prisma-selects.constant';
 import { User } from 'src/common/interfaces/user.interface';
-import { slugify } from 'src/common/utils/slug.util';
+import { generateUniqueSlug } from 'src/common/utils/slug.util';
 import { ActivityService } from '../activity/activity.service';
 import { ActivityAction } from '../activity/enums/activity-action.enum';
 import { PrismaService } from '../prisma/prisma.service';
@@ -35,7 +35,7 @@ export class WorkspaceService {
           ownerId: userId,
           name: createWorkspaceDto.name,
           logo: createWorkspaceDto.logo,
-          slug: slugify(createWorkspaceDto.name),
+          slug: generateUniqueSlug(createWorkspaceDto.name),
         },
       });
 

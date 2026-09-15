@@ -266,18 +266,22 @@ Legend:
 18. [x] **Phase 12 — Realtime Module**: Implement Socket.IO gateway (`/realtime`), JWT handshake authentication (`WsJwtGuard`), user presence tracking (`user:online`/`user:offline`), room subscriptions (`workspace:id`, `board:id`, `task:id`), and event-driven domain broadcasting (`task.created`, `task.moved`, `task.updated`, `task.deleted`, `comment.created`, `notification.created`).
 19. [x] **Phase 13 — Global Search Module**: Implement workspace-scoped full-text search across Projects, Tasks, Comments, and Members (`GET /workspaces/:workspaceId/search`).
 20. [x] **Phase 14 — Dashboard & Analytics Module**: Implement high-level workspace summary KPIs, task status/priority distribution, productivity throughput, and per-member workload breakdown endpoints (`GET /workspaces/:workspaceId/dashboard/*`).
+21. [x] **Production Audit — Phase 1 Step 1A (Stability & Logic Guardrails)**:
+    - [x] Multer 10MB upload limit & MIME whitelist (`storage.config.ts`, `attachment.controller.ts`).
+    - [x] Collision-resistant workspace slug generation with nanoid suffixes (`slug.util.ts`, `workspace.service.ts`).
+    - [x] Task deletion permission check: only creator or workspace ADMIN/OWNER can delete (`task.service.ts`).
+    - [x] Kanban column move auto-synchronizes `Task.status` and emits `task.moved` realtime event (`move-task.dto.ts`, `task.service.ts`).
 
 ---
 
 # Next Feature (What to do next)
 
 ```
-🎉 All core backend feature modules (Phases 1 through 14) are fully implemented, optimized, and verified!
-
-Potential Next Steps:
-1. Run end-to-end integration test suite (`pnpm test:e2e`).
-2. Generate production documentation & OpenAPI client specs.
+Current Sprint: Production Audit — Phase 1 Step 1B (Onboarding & API Ergonomics)
+1. Onboarding Starter Project Seed (auto-seed "General" project, Kanban board & starter cards on workspace creation).
+2. Shallow REST Routes for Tasks (/tasks/:taskId, /tasks/:taskId/comments, /tasks/:taskId/attachments).
 ```
+
 
 ---
 
