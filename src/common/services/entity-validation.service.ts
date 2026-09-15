@@ -102,4 +102,91 @@ export class EntityValidationService {
 
     return member;
   }
+
+  // Verify task exists by taskId or key (e.g. GEN-1) regardless of column movement (robust against race conditions)
+  async verifyTaskById(taskIdOrKey: string) {
+    const isUuid =
+      /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(
+        taskIdOrKey,
+      );
+
+    const task = await this.prisma.task.findFirst({
+      where: {
+        ...(isUuid ? { id: taskIdOrKey } : { key: taskIdOrKey.toUpperCase() }),
+        deletedAt: null,
+        column: {
+          board: {
+            project: {
+              deletedAt: null,
+              workspace: {
+                deletedAt: null,
+              },
+            },
+          },
+        },
+      },
+      include: {
+        column: {
+          include: {
+            board: {
+              include: {
+                project: {
+                  select: {
+                    id: true,
+                    workspaceId: true,
+                    title: true,
+                    key: true,
+                  },
+                },
+              },
+            },
+          },
+        },
+      },
+    });
+
+    if (!task) {
+      throw new NotFoundException('Task not found');
+    }
+
+    return task;
+  }
+
+  // Verify column exists by columnId
+  async verifyColumnById(columnId: string) {
+    const column = await this.prisma.boardColumn.findFirst({
+      where: {
+        id: columnId,
+        board: {
+          project: {
+            deletedAt: null,
+            workspace: {
+              deletedAt: null,
+            },
+          },
+        },
+      },
+      include: {
+        board: {
+          include: {
+            project: {
+              select: {
+                id: true,
+                workspaceId: true,
+                title: true,
+                key: true,
+                taskCounter: true,
+              },
+            },
+          },
+        },
+      },
+    });
+
+    if (!column) {
+      throw new NotFoundException('Column not found');
+    }
+
+    return column;
+  }
 }

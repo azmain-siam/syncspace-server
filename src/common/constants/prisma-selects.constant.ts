@@ -5,6 +5,8 @@ export const SAFE_USER_SELECT = {
   email: true,
   avatar: true,
   phone: true,
+  bio: true,
+  timezone: true,
   createdAt: true,
 } as const;
 

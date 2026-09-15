@@ -59,9 +59,9 @@ Legend:
 ## User
 
 - [x] Profile (`GET /api/v1/user/me`)
-- [ ] Update Profile
-- [ ] Avatar Upload
-- [ ] Change Password
+- [x] Update Profile (`PATCH /api/v1/user/me`)
+- [x] Avatar Upload (`POST /api/v1/user/avatar`)
+- [x] Change Password (`PATCH /api/v1/user/change-password`)
 
 ---
 
@@ -266,18 +266,39 @@ Legend:
 18. [x] **Phase 12 — Realtime Module**: Implement Socket.IO gateway (`/realtime`), JWT handshake authentication (`WsJwtGuard`), user presence tracking (`user:online`/`user:offline`), room subscriptions (`workspace:id`, `board:id`, `task:id`), and event-driven domain broadcasting (`task.created`, `task.moved`, `task.updated`, `task.deleted`, `comment.created`, `notification.created`).
 19. [x] **Phase 13 — Global Search Module**: Implement workspace-scoped full-text search across Projects, Tasks, Comments, and Members (`GET /workspaces/:workspaceId/search`).
 20. [x] **Phase 14 — Dashboard & Analytics Module**: Implement high-level workspace summary KPIs, task status/priority distribution, productivity throughput, and per-member workload breakdown endpoints (`GET /workspaces/:workspaceId/dashboard/*`).
+21. [x] **Production Audit — Phase 1 Step 1A (Stability & Logic Guardrails)**:
+    - [x] Multer 10MB upload limit & MIME whitelist (`storage.config.ts`, `attachment.controller.ts`).
+    - [x] Collision-resistant workspace slug generation with nanoid suffixes (`slug.util.ts`, `workspace.service.ts`).
+    - [x] Task deletion permission check: only creator or workspace ADMIN/OWNER can delete (`task.service.ts`).
+    - [x] Kanban column move auto-synchronizes `Task.status` and emits `task.moved` realtime event (`move-task.dto.ts`, `task.service.ts`).
+23. [x] **Production Audit — Phase 2 (Daily Contributor Loop & User Identity)**:
+    - [x] User Profile & Password Updates (`PATCH /user/me`, `POST /user/avatar`, `PATCH /user/change-password`, security audit log `PASSWORD_CHANGED`).
+    - [x] "My Tasks" Personal Inbox API (`GET /workspaces/:workspaceId/my-tasks` with grouping by project/priority/status/dueDate and pagination).
+    - [x] Human-Readable Task Keys: Project-scoped sequential keys (`GEN-1`, `SYNC-101`) with automatic project key derivation and dual UUID/Key resolution.
+    - [x] Subtasks & Acceptance Checklists: `TaskChecklist` entity with CRUD, toggle, ordering, and activity logging (`/tasks/:taskId/checklists`).
+    - [x] Task-Level Activity Stream: `GET /tasks/:taskId/activities` for dedicated task modal history tab.
+24. [x] **Production Audit — Phase 3 (Subphase 3A: Project Views & Taxonomy)**:
+    - [x] Task Labels & Custom Color Categorization System (`TaskLabel` model, CRUD, task associations, activity logging via `/workspaces/:workspaceId/labels` and `/tasks/:taskId/labels`).
+    - [x] Project Flat List / Table View API (`GET /projects/:projectId/tasks` with multi-column sorting, status/priority/assignee/label/search filters, pagination, and checklist summary).
+    - [x] Project Archival & Deletion Lifecycle (`DELETE /workspaces/:workspaceId/projects/:projectId` soft-delete and `PATCH /workspaces/:workspaceId/projects/:projectId/restore`).
+25. [x] **Production Audit — Phase 3 (Subphase 3B: Team Governance & Safety)**:
+    - [x] Viewer / Guest Role Implementation (`GUEST` in `WorkspaceRole` enum with read-only and comment-only permissions).
+    - [x] Trash Management & Soft-Delete Restore APIs (`TrashModule`, `GET/POST/DELETE /workspaces/:workspaceId/trash`).
+    - [x] Security Audit Log Feed API (`AuditLogController`, `GET /workspaces/:workspaceId/audit-logs`).
 
 ---
 
 # Next Feature (What to do next)
 
 ```
-🎉 All core backend feature modules (Phases 1 through 14) are fully implemented, optimized, and verified!
-
-Potential Next Steps:
-1. Run end-to-end integration test suite (`pnpm test:e2e`).
-2. Generate production documentation & OpenAPI client specs.
+Current Sprint: Production Audit — Phase 4 (Agile Scale & Real-Time Polish)
+1. Sprints / Milestones & Dedicated Backlog View (Sprint entity and backlog triage support).
+2. Effort Estimation (Story Points & Estimated Hours on Task + dashboard workload analytics).
+3. Task Bulk Operations (POST /tasks/bulk-update and POST /tasks/bulk-delete).
+4. Socket.IO Redis Adapter Presence (Distributed WebSocket scaling).
+5. Comment Emoji Reactions (CommentReaction entity & toggle endpoints).
 ```
+
 
 ---
 

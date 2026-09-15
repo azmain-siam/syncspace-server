@@ -15,9 +15,11 @@ model User {
   phone              String?   @unique
   password           String?
   avatar             String?
+  bio                String?
+  timezone           String?      @default("UTC")
   provider           AuthProvider @default(LOCAL)
   lastLoginAt        DateTime?
-  isEmailVerified    Boolean   @default(false)
+  isEmailVerified    Boolean      @default(false)
   emailVerifiedAt    DateTime?
   hashedRefreshToken String?
 
@@ -27,6 +29,7 @@ model User {
   ownedWorkspaces          Workspace[]           @relation("WorkspaceOwner")
   workspaceMembers         WorkspaceMember[]
   assignedTasks            Task[]                @relation("TaskAssignee")
+  assignedChecklists       TaskChecklist[]       @relation("ChecklistAssignee")
   createdProjects          Project[]             @relation("ProjectCreator")
   createdTasks             Task[]                @relation("TaskCreator")
   comments                 Comment[]
@@ -59,17 +62,21 @@ model VerificationToken {
 }
 
 model AuditLog {
-  id        String  @id @default(uuid())
-  actorId   String?
-  action    String
-  ipAddress String?
-  userAgent String?
-  metadata  Json?
+  id          String   @id @default(uuid())
+  workspaceId String?
+  actorId     String?
+  action      String
+  ipAddress   String?
+  userAgent   String?
+  metadata    Json?
 
   createdAt DateTime @default(now())
 
-  actor User? @relation("UserAuditLogs", fields: [actorId], references: [id], onDelete: SetNull)
+  actor     User?      @relation("UserAuditLogs", fields: [actorId], references: [id], onDelete: SetNull)
+  workspace Workspace? @relation(fields: [workspaceId], references: [id], onDelete: SetNull)
 
+  @@index([workspaceId])
+  @@index([workspaceId, createdAt])
   @@index([actorId])
   @@index([action])
   @@index([createdAt])
@@ -93,6 +100,8 @@ model Workspace {
   projects            Project[]
   workspaceActivities WorkspaceActivity[]
   invitations         WorkspaceInvitation[]
+  labels              TaskLabel[]
+  auditLogs           AuditLog[]
 
   @@index([ownerId])
   @@index([deletedAt])
@@ -158,6 +167,7 @@ model WorkspaceActivity {
   @@index([projectId])
   @@index([actorId])
   @@index([createdAt])
+  @@index([taskId, createdAt])
   @@index([workspaceId, createdAt])
 }
 
@@ -165,6 +175,8 @@ model Project {
   id          String          @id @default(uuid())
   workspaceId String
   title       String
+  key         String?
+  taskCounter Int             @default(0)
   slug        String?
   description String?
   status      ProjectStatus   @default(ACTIVE)
@@ -185,6 +197,7 @@ model Project {
   projectMembers ProjectMember[]
 
   @@index([workspaceId])
+  @@index([workspaceId, key])
   @@index([status])
   @@index([createdById])
   @@index([workspaceId, deletedAt])
@@ -239,6 +252,8 @@ model BoardColumn {
 model Task {
   id          String       @id @default(uuid())
   columnId    String
+  key         String?
+  taskNumber  Int?
   assigneeId  String?
   createdBy   String
   title       String
@@ -258,16 +273,52 @@ model Task {
   comments            Comment[]
   attachments         Attachment[]
   links               TaskLink[]
+  checklists          TaskChecklist[]
   workspaceActivities WorkspaceActivity[]
+  labels              TaskLabel[]
 
   @@unique([columnId, order])
   @@index([columnId])
+  @@index([key])
   @@index([assigneeId])
   @@index([createdBy])
   @@index([priority])
   @@index([status])
   @@index([dueDate])
   @@index([columnId, deletedAt])
+}
+
+model TaskChecklist {
+  id          String   @id @default(uuid())
+  taskId      String
+  title       String
+  isCompleted Boolean  @default(false)
+  order       Int      @default(0)
+  assigneeId  String?
+
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  task        Task     @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  assignee    User?    @relation("ChecklistAssignee", fields: [assigneeId], references: [id], onDelete: SetNull)
+
+  @@index([taskId])
+  @@index([taskId, order])
+}
+
+model TaskLabel {
+  id          String   @id @default(uuid())
+  workspaceId String
+  name        String
+  color       String
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  workspace Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  tasks     Task[]
+
+  @@unique([workspaceId, name])
+  @@index([workspaceId])
 }
 
 model Comment {
@@ -353,6 +404,7 @@ enum WorkspaceRole {
   OWNER
   ADMIN
   MEMBER
+  GUEST
 }
 
 enum WorkspaceVisibility {

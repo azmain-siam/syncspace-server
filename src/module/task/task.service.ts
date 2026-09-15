@@ -1,15 +1,26 @@
-import { Injectable } from '@nestjs/common';
+import {
+  ForbiddenException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 import { EventEmitter2 } from '@nestjs/event-emitter';
-import { Prisma, TaskPriority, TaskStatus } from '@prisma/client';
+import {
+  Prisma,
+  TaskPriority,
+  TaskStatus,
+  WorkspaceRole,
+} from '@prisma/client';
 import { SAFE_USER_MINIMAL_SELECT } from 'src/common/constants/prisma-selects.constant';
 import { User } from 'src/common/interfaces/user.interface';
 import { EntityValidationService } from 'src/common/services/entity-validation.service';
 import { calculatePaginationMeta } from 'src/common/utils/pagination.util';
+import { generateProjectKey } from 'src/common/utils/slug.util';
 import { ActivityService } from '../activity/activity.service';
 import { ActivityAction } from '../activity/enums/activity-action.enum';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateTaskDto } from './dto/create-task.dto';
 import { MoveTaskDto } from './dto/move-task.dto';
+import { MyTasksQueryDto } from './dto/my-tasks-query.dto';
 import { TaskQueryDto } from './dto/task-query.dto';
 import { UpdateTaskDto } from './dto/update-task.dto';
 
@@ -22,21 +33,14 @@ export class TaskService {
     private readonly eventEmitter: EventEmitter2,
   ) {}
 
-  // Create Task
-  async createTask(
-    workspaceId: string,
-    projectId: string,
-    boardId: string,
-    columnId: string,
-    dto: CreateTaskDto,
-    currentUser: User,
-  ) {
-    await this.entityValidationService.verifyColumn(
-      workspaceId,
-      projectId,
-      boardId,
-      columnId,
-    );
+  // Create Task in Column
+  async createTask(columnId: string, dto: CreateTaskDto, currentUser: User) {
+    const column =
+      await this.entityValidationService.verifyColumnById(columnId);
+    const workspaceId = column.board.project.workspaceId;
+    const projectId = column.board.project.id;
+    const project = column.board.project;
+    const boardId = column.board.id;
 
     if (dto.assigneeId) {
       await this.entityValidationService.verifyAssignee(
@@ -57,9 +61,28 @@ export class TaskService {
         targetOrder = lastTask ? lastTask.order + 1 : 0;
       }
 
+      // Ensure project has a key and increment sequential task counter
+      const projectKey = project.key || generateProjectKey(project.title);
+      const updatedProject = await tx.project.update({
+        where: { id: projectId },
+        data: {
+          key: projectKey,
+          taskCounter: { increment: 1 },
+        },
+        select: {
+          key: true,
+          taskCounter: true,
+        },
+      });
+
+      const taskNumber = updatedProject.taskCounter;
+      const key = `${updatedProject.key}-${taskNumber}`;
+
       const task = await tx.task.create({
         data: {
           columnId,
+          key,
+          taskNumber,
           createdBy: currentUser.id,
           title: dto.title,
           description: dto.description,
@@ -72,6 +95,14 @@ export class TaskService {
         include: {
           assignee: { select: SAFE_USER_MINIMAL_SELECT },
           creator: { select: SAFE_USER_MINIMAL_SELECT },
+          column: {
+            select: {
+              id: true,
+              title: true,
+              boardId: true,
+            },
+          },
+          labels: true,
         },
       });
 
@@ -82,8 +113,13 @@ export class TaskService {
         boardId,
         taskId: task.id,
         action: ActivityAction.TASK_CREATED,
-        description: `${currentUser.name} created task ${task.title}`,
-        metadata: { taskId: task.id, title: task.title, order: task.order },
+        description: `${currentUser.name} created task ${task.title} [${key}]`,
+        metadata: {
+          taskId: task.id,
+          key: task.key,
+          title: task.title,
+          order: task.order,
+        },
       });
 
       if (dto.assigneeId) {
@@ -94,12 +130,17 @@ export class TaskService {
           boardId,
           taskId: task.id,
           action: ActivityAction.TASK_ASSIGNED,
-          description: `Assigned task ${task.title} to ${task.assignee?.name}`,
-          metadata: { taskId: task.id, assigneeId: dto.assigneeId },
+          description: `Assigned task ${task.title} [${key}] to ${task.assignee?.name}`,
+          metadata: {
+            taskId: task.id,
+            key: task.key,
+            assigneeId: dto.assigneeId,
+          },
         });
 
         this.eventEmitter.emit('task.assigned', {
           taskId: task.id,
+          key: task.key,
           title: task.title,
           assigneeId: dto.assigneeId,
           actorId: currentUser.id,
@@ -116,19 +157,8 @@ export class TaskService {
   }
 
   // Get Column Tasks (Paginated & Filtered)
-  async getTasks(
-    workspaceId: string,
-    projectId: string,
-    boardId: string,
-    columnId: string,
-    query: TaskQueryDto,
-  ) {
-    await this.entityValidationService.verifyColumn(
-      workspaceId,
-      projectId,
-      boardId,
-      columnId,
-    );
+  async getTasks(columnId: string, query: TaskQueryDto) {
+    await this.entityValidationService.verifyColumnById(columnId);
 
     const page = query.page ?? 1;
     const limit = query.limit ?? 20;
@@ -145,6 +175,7 @@ export class TaskService {
             OR: [
               { title: { contains: query.search, mode: 'insensitive' } },
               { description: { contains: query.search, mode: 'insensitive' } },
+              { key: { contains: query.search, mode: 'insensitive' } },
             ],
           }
         : {}),
@@ -159,8 +190,23 @@ export class TaskService {
         include: {
           assignee: { select: SAFE_USER_MINIMAL_SELECT },
           creator: { select: SAFE_USER_MINIMAL_SELECT },
+          labels: true,
+          checklists: {
+            select: {
+              id: true,
+              title: true,
+              isCompleted: true,
+              order: true,
+            },
+            orderBy: { order: 'asc' },
+          },
           _count: {
-            select: { comments: true, attachments: true },
+            select: {
+              comments: true,
+              attachments: true,
+              links: true,
+              checklists: true,
+            },
           },
         },
       }),
@@ -173,40 +219,232 @@ export class TaskService {
     };
   }
 
-  // Get Single Task
-  async getTask(
+  // Get Single Task Details (supports UUID or human key e.g. GEN-1)
+  async getTask(taskIdOrKey: string) {
+    const isUuid =
+      /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(
+        taskIdOrKey,
+      );
+
+    const task = await this.prisma.task.findFirst({
+      where: {
+        ...(isUuid ? { id: taskIdOrKey } : { key: taskIdOrKey.toUpperCase() }),
+        deletedAt: null,
+      },
+      include: {
+        column: {
+          include: {
+            board: {
+              include: {
+                project: {
+                  select: {
+                    id: true,
+                    title: true,
+                    key: true,
+                    color: true,
+                    workspaceId: true,
+                  },
+                },
+              },
+            },
+          },
+        },
+        assignee: { select: SAFE_USER_MINIMAL_SELECT },
+        creator: { select: SAFE_USER_MINIMAL_SELECT },
+        labels: true,
+        checklists: {
+          orderBy: { order: 'asc' },
+          include: {
+            assignee: { select: SAFE_USER_MINIMAL_SELECT },
+          },
+        },
+        attachments: {
+          select: {
+            id: true,
+            fileName: true,
+            fileUrl: true,
+            fileSize: true,
+            mimeType: true,
+            createdAt: true,
+            uploader: { select: SAFE_USER_MINIMAL_SELECT },
+          },
+        },
+        links: true,
+        _count: {
+          select: {
+            comments: true,
+            attachments: true,
+            links: true,
+            checklists: true,
+          },
+        },
+      },
+    });
+
+    if (!task) {
+      throw new NotFoundException('Task not found');
+    }
+
+    return task;
+  }
+
+  // Central Personal Inbox: Get All Tasks Assigned to User in Workspace
+  async getMyTasks(
     workspaceId: string,
-    projectId: string,
-    boardId: string,
-    columnId: string,
-    taskId: string,
+    query: MyTasksQueryDto,
+    currentUser: User,
   ) {
-    return this.entityValidationService.verifyTask(
-      workspaceId,
-      projectId,
-      boardId,
-      columnId,
-      taskId,
+    await this.entityValidationService.verifyWorkspace(workspaceId);
+
+    const page = query.page ?? 1;
+    const limit = query.limit ?? 50;
+    const skip = (page - 1) * limit;
+
+    const now = new Date();
+    const startOfToday = new Date(
+      now.getFullYear(),
+      now.getMonth(),
+      now.getDate(),
     );
+    const endOfToday = new Date(
+      now.getFullYear(),
+      now.getMonth(),
+      now.getDate(),
+      23,
+      59,
+      59,
+      999,
+    );
+
+    let dueDateFilter: Prisma.DateTimeNullableFilter | undefined;
+    let statusFilterCondition:
+      | Prisma.EnumTaskStatusFilter
+      | TaskStatus
+      | undefined = query.status;
+
+    if (query.dueDate === 'today') {
+      dueDateFilter = { gte: startOfToday, lte: endOfToday };
+    } else if (query.dueDate === 'overdue') {
+      dueDateFilter = { lt: startOfToday };
+      if (!query.status) {
+        statusFilterCondition = { not: TaskStatus.DONE };
+      }
+    } else if (query.dueDate === 'upcoming') {
+      dueDateFilter = { gt: endOfToday };
+    } else if (query.dueDate === 'nodate') {
+      dueDateFilter = { equals: null };
+    }
+
+    const where: Prisma.TaskWhereInput = {
+      assigneeId: currentUser.id,
+      deletedAt: null,
+      column: {
+        board: {
+          project: {
+            workspaceId,
+            deletedAt: null,
+            ...(query.projectId ? { id: query.projectId } : {}),
+          },
+        },
+      },
+      ...(statusFilterCondition ? { status: statusFilterCondition } : {}),
+      ...(query.priority ? { priority: query.priority } : {}),
+      ...(dueDateFilter ? { dueDate: dueDateFilter } : {}),
+    };
+
+    const [tasks, total] = await Promise.all([
+      this.prisma.task.findMany({
+        where,
+        orderBy: [
+          { dueDate: 'asc' },
+          { priority: 'desc' },
+          { createdAt: 'desc' },
+        ],
+        skip,
+        take: limit,
+        include: {
+          column: {
+            select: {
+              id: true,
+              title: true,
+              board: {
+                select: {
+                  id: true,
+                  title: true,
+                  project: {
+                    select: {
+                      id: true,
+                      title: true,
+                      key: true,
+                      color: true,
+                    },
+                  },
+                },
+              },
+            },
+          },
+          assignee: { select: SAFE_USER_MINIMAL_SELECT },
+          creator: { select: SAFE_USER_MINIMAL_SELECT },
+          labels: true,
+          checklists: {
+            select: {
+              id: true,
+              title: true,
+              isCompleted: true,
+              order: true,
+            },
+            orderBy: { order: 'asc' },
+          },
+          _count: {
+            select: {
+              comments: true,
+              attachments: true,
+              links: true,
+              checklists: true,
+            },
+          },
+        },
+      }),
+      this.prisma.task.count({ where }),
+    ]);
+
+    let grouped: Record<string, typeof tasks> | null = null;
+    if (query.groupBy) {
+      grouped = {};
+      for (const t of tasks) {
+        let groupKey = 'Other';
+        if (query.groupBy === 'project') {
+          groupKey = t.column.board.project.title || 'Untitled Project';
+        } else if (query.groupBy === 'priority') {
+          groupKey = t.priority;
+        } else if (query.groupBy === 'status') {
+          groupKey = t.status;
+        } else if (query.groupBy === 'dueDate') {
+          if (!t.dueDate) groupKey = 'No Due Date';
+          else if (t.dueDate < startOfToday) groupKey = 'Overdue';
+          else if (t.dueDate <= endOfToday) groupKey = 'Due Today';
+          else groupKey = 'Upcoming';
+        }
+        if (!grouped[groupKey]) grouped[groupKey] = [];
+        grouped[groupKey].push(t);
+      }
+    }
+
+    return {
+      tasks,
+      ...(grouped ? { grouped } : {}),
+      meta: calculatePaginationMeta(total, page, limit),
+    };
   }
 
   // Update Task
-  async updateTask(
-    workspaceId: string,
-    projectId: string,
-    boardId: string,
-    columnId: string,
-    taskId: string,
-    dto: UpdateTaskDto,
-    currentUser: User,
-  ) {
-    const existingTask = await this.getTask(
-      workspaceId,
-      projectId,
-      boardId,
-      columnId,
-      taskId,
-    );
+  async updateTask(taskId: string, dto: UpdateTaskDto, currentUser: User) {
+    const existingTask =
+      await this.entityValidationService.verifyTaskById(taskId);
+    const workspaceId = existingTask.column.board.project.workspaceId;
+    const projectId = existingTask.column.board.project.id;
+    const boardId = existingTask.column.board.id;
+    const columnId = existingTask.columnId;
 
     if (dto.assigneeId && dto.assigneeId !== existingTask.assigneeId) {
       await this.entityValidationService.verifyAssignee(
@@ -229,6 +467,14 @@ export class TaskService {
         include: {
           assignee: { select: SAFE_USER_MINIMAL_SELECT },
           creator: { select: SAFE_USER_MINIMAL_SELECT },
+          column: {
+            select: {
+              id: true,
+              title: true,
+              boardId: true,
+            },
+          },
+          labels: true,
         },
       });
 
@@ -273,26 +519,58 @@ export class TaskService {
   }
 
   // Move Task across columns or reorder
-  async moveTask(
-    workspaceId: string,
-    projectId: string,
-    boardId: string,
-    columnId: string,
-    taskId: string,
-    dto: MoveTaskDto,
-    currentUser: User,
-  ) {
-    await this.getTask(workspaceId, projectId, boardId, columnId, taskId);
+  async moveTask(taskId: string, dto: MoveTaskDto, currentUser: User) {
+    const task = await this.entityValidationService.verifyTaskById(taskId);
+    const workspaceId = task.column.board.project.workspaceId;
+    const projectId = task.column.board.project.id;
+    const boardId = task.column.board.id;
+    const sourceColumnId = task.columnId;
 
-    // Verify target column exists under same board
-    const targetColumn = await this.entityValidationService.verifyColumn(
-      workspaceId,
-      projectId,
-      boardId,
+    // Verify target column exists and belongs to same board
+    const targetColumn = await this.entityValidationService.verifyColumnById(
       dto.targetColumnId,
     );
+    if (targetColumn.boardId !== boardId) {
+      throw new ForbiddenException(
+        'Target column must belong to the same board',
+      );
+    }
 
-    return this.prisma.$transaction(async (tx) => {
+    // Infer or use explicitly provided status
+    let newStatus = dto.status;
+    if (!newStatus) {
+      const colTitle = targetColumn.title.trim().toLowerCase();
+      if (
+        colTitle === 'done' ||
+        colTitle === 'completed' ||
+        colTitle === 'finished' ||
+        colTitle === 'closed'
+      ) {
+        newStatus = TaskStatus.DONE;
+      } else if (
+        colTitle === 'in progress' ||
+        colTitle === 'in-progress' ||
+        colTitle === 'doing' ||
+        colTitle === 'active'
+      ) {
+        newStatus = TaskStatus.IN_PROGRESS;
+      } else if (
+        colTitle === 'review' ||
+        colTitle === 'in review' ||
+        colTitle === 'qa' ||
+        colTitle === 'testing'
+      ) {
+        newStatus = TaskStatus.REVIEW;
+      } else if (
+        colTitle === 'to do' ||
+        colTitle === 'todo' ||
+        colTitle === 'backlog'
+      ) {
+        newStatus = TaskStatus.TODO;
+      }
+    }
+
+    const movedTask = await this.prisma.$transaction(async (tx) => {
       // Step A: Temporarily set moving task's order to negative offset
       await tx.task.update({
         where: { id: taskId },
@@ -326,12 +604,13 @@ export class TaskService {
       }
       await Promise.all(updatePromises);
 
-      // Step D: Place moving task into target column and target order
-      const movedTask = await tx.task.update({
+      // Step D: Place moving task into target column, target order, and synced status
+      const updated = await tx.task.update({
         where: { id: taskId },
         data: {
           columnId: dto.targetColumnId,
           order: dto.targetOrder,
+          ...(newStatus ? { status: newStatus } : {}),
         },
         include: {
           column: { select: { id: true, title: true } },
@@ -344,37 +623,61 @@ export class TaskService {
         actorId: currentUser.id,
         projectId,
         boardId,
-        taskId: movedTask.id,
+        taskId: updated.id,
         action: ActivityAction.TASK_MOVED,
-        description: `${currentUser.name} moved task ${movedTask.title} to ${targetColumn.title}`,
+        description: `${currentUser.name} moved task ${updated.title} to ${targetColumn.title}`,
         metadata: {
-          taskId: movedTask.id,
-          fromColumnId: columnId,
+          taskId: updated.id,
+          fromColumnId: sourceColumnId,
           toColumnId: dto.targetColumnId,
           order: dto.targetOrder,
+          status: updated.status,
         },
       });
 
-      return movedTask;
+      return updated;
     });
+
+    this.eventEmitter.emit('task.moved', {
+      taskId: movedTask.id,
+      sourceColumnId,
+      destinationColumnId: dto.targetColumnId,
+      newOrder: dto.targetOrder,
+      boardId,
+      workspaceId,
+    });
+
+    return movedTask;
   }
 
   // Delete (Soft delete) Task
-  async deleteTask(
-    workspaceId: string,
-    projectId: string,
-    boardId: string,
-    columnId: string,
-    taskId: string,
-    currentUser: User,
-  ) {
-    const task = await this.getTask(
-      workspaceId,
-      projectId,
-      boardId,
-      columnId,
-      taskId,
-    );
+  async deleteTask(taskId: string, currentUser: User) {
+    const task = await this.entityValidationService.verifyTaskById(taskId);
+    const workspaceId = task.column.board.project.workspaceId;
+    const projectId = task.column.board.project.id;
+    const boardId = task.column.board.id;
+
+    // Enforce deletion permission: creator or workspace ADMIN/OWNER
+    const member = await this.prisma.workspaceMember.findUnique({
+      where: {
+        workspaceId_userId: {
+          workspaceId,
+          userId: currentUser.id,
+        },
+      },
+    });
+
+    const isPrivileged =
+      member &&
+      (member.role === WorkspaceRole.OWNER ||
+        member.role === WorkspaceRole.ADMIN);
+    const isCreator = task.createdBy === currentUser.id;
+
+    if (!isPrivileged && !isCreator) {
+      throw new ForbiddenException(
+        'You do not have permission to delete this task',
+      );
+    }
 
     return this.prisma.$transaction(async (tx) => {
       await tx.task.update({

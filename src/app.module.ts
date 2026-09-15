@@ -18,6 +18,8 @@ import { CommentModule } from './module/comment/comment.module';
 import { EmailModule } from './module/email/email.module';
 import { PrismaModule } from './module/prisma/prisma.module';
 import { ProjectModule } from './module/project/project.module';
+import { LabelModule } from './module/label/label.module';
+import { TaskChecklistModule } from './module/task-checklist/task-checklist.module';
 import { TaskLinkModule } from './module/task-link/task-link.module';
 import { TaskModule } from './module/task/task.module';
 import { UserModule } from './module/user/user.module';
@@ -30,6 +32,7 @@ import { NotificationModule } from './module/notification/notification.module';
 import { QueueModule } from './module/queue/queue.module';
 import { RealtimeModule } from './module/realtime/realtime.module';
 import { SearchModule } from './module/search/search.module';
+import { TrashModule } from './module/trash/trash.module';
 
 @Module({
   imports: [
@@ -70,11 +73,14 @@ import { SearchModule } from './module/search/search.module';
     BoardModule,
     ColumnModule,
     TaskModule,
+    TaskChecklistModule,
+    LabelModule,
     CommentModule,
     AttachmentModule,
     TaskLinkModule,
     NotificationModule,
     AuditLogModule,
+    TrashModule,
     SearchModule,
     DashboardModule,
   ],
