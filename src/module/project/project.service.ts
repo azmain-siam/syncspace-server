@@ -67,13 +67,13 @@ export class ProjectService {
     });
   }
 
-  // Get project
-  async getProject(workspaceId: string, projectId: string) {
+  // Get project by ID or Slug
+  async getProject(workspaceId: string, projectIdOrSlug: string) {
     const project = await this.prisma.project.findFirst({
       where: {
-        id: projectId,
         workspaceId,
         deletedAt: null,
+        OR: [{ id: projectIdOrSlug }, { slug: projectIdOrSlug }],
       },
     });
     if (!project) throw new NotFoundException('Project not found');
@@ -83,17 +83,17 @@ export class ProjectService {
 
   // Update project
   async updateProject(
-    projectId: string,
+    projectIdOrSlug: string,
     workspaceId: string,
     dto: UpdateProjectDto,
     currentUser: User,
   ) {
-    const project = await this.getProject(workspaceId, projectId);
+    const project = await this.getProject(workspaceId, projectIdOrSlug);
 
     return this.prisma.$transaction(async (tx) => {
       const updatedProject = await tx.project.update({
         where: {
-          id: projectId,
+          id: project.id,
         },
         data: {
           title: dto.title ?? project.title,
@@ -123,16 +123,16 @@ export class ProjectService {
 
   // Archive project
   async archiveProject(
-    projectId: string,
+    projectIdOrSlug: string,
     workspaceId: string,
     currentUser: User,
   ) {
-    await this.getProject(workspaceId, projectId);
+    const project = await this.getProject(workspaceId, projectIdOrSlug);
 
     return this.prisma.$transaction(async (tx) => {
       const archivedProject = await tx.project.update({
         where: {
-          id: projectId,
+          id: project.id,
         },
         data: {
           status: ProjectStatus.ARCHIVED,

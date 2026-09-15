@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>Workspace Invitation - SyncSpace</title>
+  <style>
+    body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #f4f7f6; margin: 0; padding: 20px; color: #333; }
+    .card { max-width: 600px; margin: 0 auto; background: #ffffff; padding: 30px; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.05); }
+    .header { text-align: center; border-bottom: 1px solid #eeeeee; padding-bottom: 20px; margin-bottom: 20px; }
+    .brand { font-size: 24px; font-weight: bold; color: #4F46E5; }
+    .btn { display: inline-block; padding: 12px 24px; background-color: #4F46E5; color: #ffffff; text-decoration: none; border-radius: 6px; font-weight: 600; margin-top: 20px; }
+    .footer { font-size: 12px; color: #888888; text-align: center; margin-top: 30px; border-top: 1px solid #eeeeee; padding-top: 15px; }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <div class="header">
+      <div class="brand">SyncSpace</div>
+    </div>
+    <h2>Workspace Invitation</h2>
+    <p><strong>{{inviterName}}</strong> has invited you to join the workspace <strong>{{workspaceName}}</strong> on SyncSpace.</p>
+    <div style="text-align: center;">
+      <a href="{{invitationUrl}}" class="btn" target="_blank">Accept Invitation</a>
+    </div>
+    <p style="margin-top: 20px; font-size: 13px; color: #666;">Or copy and paste this link in your browser:<br><a href="{{invitationUrl}}">{{invitationUrl}}</a></p>
+    <div class="footer">
+      &copy; {{year}} SyncSpace Inc. All rights reserved.
+    </div>
+  </div>
+</body>
+</html>

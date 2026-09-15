@@ -73,18 +73,6 @@ export class HttpExceptionFilter implements ExceptionFilter {
     return e && typeof e === 'object' && e.code?.startsWith('P');
   }
 
-  // private mapPrismaError(e: any): string {
-  //   const code = e.code;
-  //   switch (code) {
-  //     case 'P2002':
-  //       return 'Duplicate value. A unique constraint was violated.';
-  //     case 'P2025':
-  //       return 'Record not found.';
-  //     default:
-  //       return 'Database error occurred.';
-  //   }
-  // }
-
   private mapPrismaError(e: any): string {
     switch (e.code) {
       case 'P2002':
@@ -98,7 +86,6 @@ export class HttpExceptionFilter implements ExceptionFilter {
       case 'P1000':
         return 'Database connection error.';
       default:
-        // console.error('Unhandled Prisma error:', e);
         this.logger.error('Unhandled Prisma error', JSON.stringify(e));
         return 'Database error occurred.';
     }

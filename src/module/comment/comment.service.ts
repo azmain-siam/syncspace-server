@@ -4,9 +4,11 @@ import {
   Logger,
   NotFoundException,
 } from '@nestjs/common';
+import { EventEmitter2 } from '@nestjs/event-emitter';
 import { WorkspaceRole } from '@prisma/client';
 import { SAFE_USER_MINIMAL_SELECT } from 'src/common/constants/prisma-selects.constant';
 import { User } from 'src/common/interfaces/user.interface';
+import { EntityValidationService } from 'src/common/services/entity-validation.service';
 import { ActivityService } from '../activity/activity.service';
 import { ActivityAction } from '../activity/enums/activity-action.enum';
 import { PrismaService } from '../prisma/prisma.service';
@@ -27,41 +29,10 @@ export class CommentService {
 
   constructor(
     private readonly prisma: PrismaService,
+    private readonly entityValidationService: EntityValidationService,
     private readonly activityService: ActivityService,
+    private readonly eventEmitter: EventEmitter2,
   ) {}
-
-  // Verify task exists in column, board, project, and workspace
-  private async verifyTask(
-    workspaceId: string,
-    projectId: string,
-    boardId: string,
-    columnId: string,
-    taskId: string,
-  ) {
-    const task = await this.prisma.task.findFirst({
-      where: {
-        id: taskId,
-        column: {
-          id: columnId,
-          board: {
-            id: boardId,
-            project: {
-              id: projectId,
-              workspaceId,
-              deletedAt: null,
-            },
-          },
-        },
-        deletedAt: null,
-      },
-    });
-
-    if (!task) {
-      throw new NotFoundException('Task not found in this column');
-    }
-
-    return task;
-  }
 
   // Parse @mentions from comment content and resolve workspace members
   private async parseAndResolveMentions(
@@ -110,7 +81,7 @@ export class CommentService {
     dto: CreateCommentDto,
     currentUser: User,
   ) {
-    const task = await this.verifyTask(
+    const task = await this.entityValidationService.verifyTask(
       workspaceId,
       projectId,
       boardId,
@@ -162,6 +133,19 @@ export class CommentService {
             mention.username,
           );
           this.dispatchEvent(CommentEventType.COMMENT_MENTION, mentionEvent);
+
+          this.eventEmitter.emit('comment.mention', {
+            commentId: comment.id,
+            taskId: task.id,
+            taskTitle: task.title,
+            mentionedUserId: mention.userId,
+            actorId: currentUser.id,
+            actorName: currentUser.name,
+            workspaceId,
+            projectId,
+            boardId,
+            columnId,
+          });
         }
       }
 
@@ -176,6 +160,11 @@ export class CommentService {
       );
       this.dispatchEvent(CommentEventType.COMMENT_CREATED, createdEvent);
 
+      this.eventEmitter.emit('comment.created', {
+        comment,
+        taskId: task.id,
+      });
+
       return comment;
     });
   }
@@ -189,7 +178,13 @@ export class CommentService {
     taskId: string,
     query: CommentCursorQueryDto,
   ) {
-    await this.verifyTask(workspaceId, projectId, boardId, columnId, taskId);
+    await this.entityValidationService.verifyTask(
+      workspaceId,
+      projectId,
+      boardId,
+      columnId,
+      taskId,
+    );
 
     const limit = query.limit ?? 20;
     const fetchLimit = limit + 1; // Fetch 1 extra to determine hasNextPage
@@ -242,7 +237,13 @@ export class CommentService {
     taskId: string,
     commentId: string,
   ) {
-    await this.verifyTask(workspaceId, projectId, boardId, columnId, taskId);
+    await this.entityValidationService.verifyTask(
+      workspaceId,
+      projectId,
+      boardId,
+      columnId,
+      taskId,
+    );
 
     const comment = await this.prisma.comment.findFirst({
       where: {
@@ -326,6 +327,11 @@ export class CommentService {
       );
       this.dispatchEvent(CommentEventType.COMMENT_UPDATED, updatedEvent);
 
+      this.eventEmitter.emit('comment.updated', {
+        comment: updatedComment,
+        taskId,
+      });
+
       return updatedComment;
     });
   }
@@ -395,6 +401,11 @@ export class CommentService {
         currentUser.id,
       );
       this.dispatchEvent(CommentEventType.COMMENT_DELETED, deletedEvent);
+
+      this.eventEmitter.emit('comment.deleted', {
+        commentId,
+        taskId,
+      });
 
       return null;
     });

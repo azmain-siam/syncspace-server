@@ -1,11 +1,9 @@
-import {
-  BadRequestException,
-  Injectable,
-  NotFoundException,
-} from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
+import { EventEmitter2 } from '@nestjs/event-emitter';
 import { Prisma, TaskPriority, TaskStatus } from '@prisma/client';
 import { SAFE_USER_MINIMAL_SELECT } from 'src/common/constants/prisma-selects.constant';
 import { User } from 'src/common/interfaces/user.interface';
+import { EntityValidationService } from 'src/common/services/entity-validation.service';
 import { calculatePaginationMeta } from 'src/common/utils/pagination.util';
 import { ActivityService } from '../activity/activity.service';
 import { ActivityAction } from '../activity/enums/activity-action.enum';
@@ -19,54 +17,10 @@ import { UpdateTaskDto } from './dto/update-task.dto';
 export class TaskService {
   constructor(
     private readonly prisma: PrismaService,
+    private readonly entityValidationService: EntityValidationService,
     private readonly activityService: ActivityService,
+    private readonly eventEmitter: EventEmitter2,
   ) {}
-
-  // Verify column belongs to board, project, and workspace
-  private async verifyColumn(
-    workspaceId: string,
-    projectId: string,
-    boardId: string,
-    columnId: string,
-  ) {
-    const column = await this.prisma.boardColumn.findFirst({
-      where: {
-        id: columnId,
-        board: {
-          id: boardId,
-          project: {
-            id: projectId,
-            workspaceId,
-            deletedAt: null,
-          },
-        },
-      },
-    });
-
-    if (!column) {
-      throw new NotFoundException('Column not found in this board');
-    }
-
-    return column;
-  }
-
-  // Verify assignee is a workspace member
-  private async verifyAssignee(workspaceId: string, assigneeId: string) {
-    const member = await this.prisma.workspaceMember.findUnique({
-      where: {
-        workspaceId_userId: {
-          workspaceId,
-          userId: assigneeId,
-        },
-      },
-    });
-
-    if (!member) {
-      throw new BadRequestException(
-        'Assigned user is not a member of this workspace',
-      );
-    }
-  }
 
   // Create Task
   async createTask(
@@ -77,10 +31,18 @@ export class TaskService {
     dto: CreateTaskDto,
     currentUser: User,
   ) {
-    await this.verifyColumn(workspaceId, projectId, boardId, columnId);
+    await this.entityValidationService.verifyColumn(
+      workspaceId,
+      projectId,
+      boardId,
+      columnId,
+    );
 
     if (dto.assigneeId) {
-      await this.verifyAssignee(workspaceId, dto.assigneeId);
+      await this.entityValidationService.verifyAssignee(
+        workspaceId,
+        dto.assigneeId,
+      );
     }
 
     return this.prisma.$transaction(async (tx) => {
@@ -135,6 +97,18 @@ export class TaskService {
           description: `Assigned task ${task.title} to ${task.assignee?.name}`,
           metadata: { taskId: task.id, assigneeId: dto.assigneeId },
         });
+
+        this.eventEmitter.emit('task.assigned', {
+          taskId: task.id,
+          title: task.title,
+          assigneeId: dto.assigneeId,
+          actorId: currentUser.id,
+          actorName: currentUser.name,
+          workspaceId,
+          projectId,
+          boardId,
+          columnId,
+        });
       }
 
       return task;
@@ -149,7 +123,12 @@ export class TaskService {
     columnId: string,
     query: TaskQueryDto,
   ) {
-    await this.verifyColumn(workspaceId, projectId, boardId, columnId);
+    await this.entityValidationService.verifyColumn(
+      workspaceId,
+      projectId,
+      boardId,
+      columnId,
+    );
 
     const page = query.page ?? 1;
     const limit = query.limit ?? 20;
@@ -202,31 +181,13 @@ export class TaskService {
     columnId: string,
     taskId: string,
   ) {
-    await this.verifyColumn(workspaceId, projectId, boardId, columnId);
-
-    const task = await this.prisma.task.findFirst({
-      where: {
-        id: taskId,
-        columnId,
-        deletedAt: null,
-      },
-      include: {
-        assignee: { select: SAFE_USER_MINIMAL_SELECT },
-        creator: { select: SAFE_USER_MINIMAL_SELECT },
-        column: {
-          select: { id: true, title: true },
-        },
-        _count: {
-          select: { comments: true, attachments: true },
-        },
-      },
-    });
-
-    if (!task) {
-      throw new NotFoundException('Task not found');
-    }
-
-    return task;
+    return this.entityValidationService.verifyTask(
+      workspaceId,
+      projectId,
+      boardId,
+      columnId,
+      taskId,
+    );
   }
 
   // Update Task
@@ -248,7 +209,10 @@ export class TaskService {
     );
 
     if (dto.assigneeId && dto.assigneeId !== existingTask.assigneeId) {
-      await this.verifyAssignee(workspaceId, dto.assigneeId);
+      await this.entityValidationService.verifyAssignee(
+        workspaceId,
+        dto.assigneeId,
+      );
     }
 
     return this.prisma.$transaction(async (tx) => {
@@ -290,6 +254,18 @@ export class TaskService {
           description: `Assigned task ${updatedTask.title} to ${updatedTask.assignee?.name}`,
           metadata: { taskId: updatedTask.id, assigneeId: dto.assigneeId },
         });
+
+        this.eventEmitter.emit('task.assigned', {
+          taskId: updatedTask.id,
+          title: updatedTask.title,
+          assigneeId: dto.assigneeId,
+          actorId: currentUser.id,
+          actorName: currentUser.name,
+          workspaceId,
+          projectId,
+          boardId,
+          columnId,
+        });
       }
 
       return updatedTask;
@@ -309,13 +285,12 @@ export class TaskService {
     await this.getTask(workspaceId, projectId, boardId, columnId, taskId);
 
     // Verify target column exists under same board
-    const targetColumn = await this.prisma.boardColumn.findFirst({
-      where: { id: dto.targetColumnId, boardId },
-    });
-
-    if (!targetColumn) {
-      throw new NotFoundException('Target column not found in this board');
-    }
+    const targetColumn = await this.entityValidationService.verifyColumn(
+      workspaceId,
+      projectId,
+      boardId,
+      dto.targetColumnId,
+    );
 
     return this.prisma.$transaction(async (tx) => {
       // Step A: Temporarily set moving task's order to negative offset

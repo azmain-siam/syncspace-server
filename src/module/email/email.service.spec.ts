@@ -1,6 +1,7 @@
-import { MailerService } from '@nestjs-modules/mailer';
+import { ConfigService } from '@nestjs/config';
 import { Test, TestingModule } from '@nestjs/testing';
-import { EmailService } from './email.service';
+import { EmailService } from './services/email.service';
+import { TemplateService } from './services/template.service';
 
 describe('EmailService', () => {
   let service: EmailService;
@@ -9,10 +10,21 @@ describe('EmailService', () => {
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         EmailService,
+        TemplateService,
         {
-          provide: MailerService,
+          provide: ConfigService,
           useValue: {
-            sendMail: jest.fn(),
+            get: jest.fn((key: string, defaultValue?: unknown) => {
+              const mockConfig: Record<string, string | number | boolean> = {
+                'email.host': 'smtp.gmail.com',
+                'email.port': 587,
+                'email.secure': false,
+                'email.user': 'test@gmail.com',
+                'email.pass': 'secret',
+                'email.from': 'SyncSpace <noreply@syncspace.com>',
+              };
+              return mockConfig[key] ?? defaultValue;
+            }),
           },
         },
       ],
