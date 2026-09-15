@@ -27,7 +27,62 @@ export class WorkspaceRoleGuard implements CanActivate {
 
     const request = context.switchToHttp().getRequest();
     const user = request.user;
-    const workspaceId = request.params.workspaceId;
+    let workspaceId = request.params.workspaceId;
+
+    if (!workspaceId) {
+      if (request.params.taskId) {
+        const task = await this.prisma.task.findUnique({
+          where: { id: request.params.taskId },
+          select: {
+            column: {
+              select: {
+                board: {
+                  select: {
+                    project: {
+                      select: { workspaceId: true },
+                    },
+                  },
+                },
+              },
+            },
+          },
+        });
+        workspaceId = task?.column?.board?.project?.workspaceId;
+        if (workspaceId) {
+          request.params.workspaceId = workspaceId;
+        }
+      } else if (request.params.columnId) {
+        const column = await this.prisma.boardColumn.findUnique({
+          where: { id: request.params.columnId },
+          select: {
+            board: {
+              select: {
+                project: {
+                  select: { workspaceId: true },
+                },
+              },
+            },
+          },
+        });
+        workspaceId = column?.board?.project?.workspaceId;
+        if (workspaceId) {
+          request.params.workspaceId = workspaceId;
+        }
+      } else if (request.params.projectId) {
+        const project = await this.prisma.project.findUnique({
+          where: { id: request.params.projectId },
+          select: { workspaceId: true },
+        });
+        workspaceId = project?.workspaceId;
+        if (workspaceId) {
+          request.params.workspaceId = workspaceId;
+        }
+      }
+    }
+
+    if (!workspaceId) {
+      throw new ForbiddenException('Workspace access denied');
+    }
 
     const member = await this.prisma.workspaceMember.findUnique({
       where: {

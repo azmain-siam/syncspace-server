@@ -1,4 +1,8 @@
-import { ForbiddenException, Injectable } from '@nestjs/common';
+import {
+  ForbiddenException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import {
   Prisma,
@@ -27,21 +31,13 @@ export class TaskService {
     private readonly eventEmitter: EventEmitter2,
   ) {}
 
-  // Create Task
-  async createTask(
-    workspaceId: string,
-    projectId: string,
-    boardId: string,
-    columnId: string,
-    dto: CreateTaskDto,
-    currentUser: User,
-  ) {
-    await this.entityValidationService.verifyColumn(
-      workspaceId,
-      projectId,
-      boardId,
-      columnId,
-    );
+  // Create Task in Column
+  async createTask(columnId: string, dto: CreateTaskDto, currentUser: User) {
+    const column =
+      await this.entityValidationService.verifyColumnById(columnId);
+    const workspaceId = column.board.project.workspaceId;
+    const projectId = column.board.project.id;
+    const boardId = column.board.id;
 
     if (dto.assigneeId) {
       await this.entityValidationService.verifyAssignee(
@@ -77,6 +73,13 @@ export class TaskService {
         include: {
           assignee: { select: SAFE_USER_MINIMAL_SELECT },
           creator: { select: SAFE_USER_MINIMAL_SELECT },
+          column: {
+            select: {
+              id: true,
+              title: true,
+              boardId: true,
+            },
+          },
         },
       });
 
@@ -121,19 +124,8 @@ export class TaskService {
   }
 
   // Get Column Tasks (Paginated & Filtered)
-  async getTasks(
-    workspaceId: string,
-    projectId: string,
-    boardId: string,
-    columnId: string,
-    query: TaskQueryDto,
-  ) {
-    await this.entityValidationService.verifyColumn(
-      workspaceId,
-      projectId,
-      boardId,
-      columnId,
-    );
+  async getTasks(columnId: string, query: TaskQueryDto) {
+    await this.entityValidationService.verifyColumnById(columnId);
 
     const page = query.page ?? 1;
     const limit = query.limit ?? 20;
@@ -165,7 +157,7 @@ export class TaskService {
           assignee: { select: SAFE_USER_MINIMAL_SELECT },
           creator: { select: SAFE_USER_MINIMAL_SELECT },
           _count: {
-            select: { comments: true, attachments: true },
+            select: { comments: true, attachments: true, links: true },
           },
         },
       }),
@@ -178,40 +170,60 @@ export class TaskService {
     };
   }
 
-  // Get Single Task
-  async getTask(
-    workspaceId: string,
-    projectId: string,
-    boardId: string,
-    columnId: string,
-    taskId: string,
-  ) {
-    return this.entityValidationService.verifyTask(
-      workspaceId,
-      projectId,
-      boardId,
-      columnId,
-      taskId,
-    );
+  // Get Single Task Details
+  async getTask(taskId: string) {
+    const task = await this.prisma.task.findFirst({
+      where: {
+        id: taskId,
+        deletedAt: null,
+      },
+      include: {
+        column: {
+          include: {
+            board: {
+              include: {
+                project: {
+                  select: { id: true, title: true, workspaceId: true },
+                },
+              },
+            },
+          },
+        },
+        assignee: { select: SAFE_USER_MINIMAL_SELECT },
+        creator: { select: SAFE_USER_MINIMAL_SELECT },
+        attachments: {
+          select: {
+            id: true,
+            fileName: true,
+            fileUrl: true,
+            fileSize: true,
+            mimeType: true,
+            createdAt: true,
+            uploader: { select: SAFE_USER_MINIMAL_SELECT },
+          },
+        },
+        links: true,
+        _count: {
+          select: { comments: true, attachments: true, links: true },
+        },
+      },
+    });
+
+    if (!task) {
+      throw new NotFoundException('Task not found');
+    }
+
+    return task;
   }
 
   // Update Task
-  async updateTask(
-    workspaceId: string,
-    projectId: string,
-    boardId: string,
-    columnId: string,
-    taskId: string,
-    dto: UpdateTaskDto,
-    currentUser: User,
-  ) {
-    const existingTask = await this.getTask(
-      workspaceId,
-      projectId,
-      boardId,
-      columnId,
-      taskId,
-    );
+  async updateTask(taskId: string, dto: UpdateTaskDto, currentUser: User) {
+    const existingTask =
+      await this.entityValidationService.verifyTaskById(taskId);
+    const workspaceId = existingTask.column.board.project.workspaceId;
+    const projectId = existingTask.column.board.project.id;
+    const boardId = existingTask.column.board.id;
+    const columnId = existingTask.columnId;
 
     if (dto.assigneeId && dto.assigneeId !== existingTask.assigneeId) {
       await this.entityValidationService.verifyAssignee(
@@ -234,6 +246,13 @@ export class TaskService {
         include: {
           assignee: { select: SAFE_USER_MINIMAL_SELECT },
           creator: { select: SAFE_USER_MINIMAL_SELECT },
+          column: {
+            select: {
+              id: true,
+              title: true,
+              boardId: true,
+            },
+          },
         },
       });
 
@@ -278,24 +297,22 @@ export class TaskService {
   }
 
   // Move Task across columns or reorder
-  async moveTask(
-    workspaceId: string,
-    projectId: string,
-    boardId: string,
-    columnId: string,
-    taskId: string,
-    dto: MoveTaskDto,
-    currentUser: User,
-  ) {
-    await this.getTask(workspaceId, projectId, boardId, columnId, taskId);
+  async moveTask(taskId: string, dto: MoveTaskDto, currentUser: User) {
+    const task = await this.entityValidationService.verifyTaskById(taskId);
+    const workspaceId = task.column.board.project.workspaceId;
+    const projectId = task.column.board.project.id;
+    const boardId = task.column.board.id;
+    const sourceColumnId = task.columnId;
 
-    // Verify target column exists under same board
-    const targetColumn = await this.entityValidationService.verifyColumn(
-      workspaceId,
-      projectId,
-      boardId,
+    // Verify target column exists and belongs to same board
+    const targetColumn = await this.entityValidationService.verifyColumnById(
       dto.targetColumnId,
     );
+    if (targetColumn.boardId !== boardId) {
+      throw new ForbiddenException(
+        'Target column must belong to the same board',
+      );
+    }
 
     // Infer or use explicitly provided status
     let newStatus = dto.status;
@@ -389,7 +406,7 @@ export class TaskService {
         description: `${currentUser.name} moved task ${updated.title} to ${targetColumn.title}`,
         metadata: {
           taskId: updated.id,
-          fromColumnId: columnId,
+          fromColumnId: sourceColumnId,
           toColumnId: dto.targetColumnId,
           order: dto.targetOrder,
           status: updated.status,
@@ -401,7 +418,7 @@ export class TaskService {
 
     this.eventEmitter.emit('task.moved', {
       taskId: movedTask.id,
-      sourceColumnId: columnId,
+      sourceColumnId,
       destinationColumnId: dto.targetColumnId,
       newOrder: dto.targetOrder,
       boardId,
@@ -412,21 +429,11 @@ export class TaskService {
   }
 
   // Delete (Soft delete) Task
-  async deleteTask(
-    workspaceId: string,
-    projectId: string,
-    boardId: string,
-    columnId: string,
-    taskId: string,
-    currentUser: User,
-  ) {
-    const task = await this.getTask(
-      workspaceId,
-      projectId,
-      boardId,
-      columnId,
-      taskId,
-    );
+  async deleteTask(taskId: string, currentUser: User) {
+    const task = await this.entityValidationService.verifyTaskById(taskId);
+    const workspaceId = task.column.board.project.workspaceId;
+    const projectId = task.column.board.project.id;
+    const boardId = task.column.board.id;
 
     // Enforce deletion permission: creator or workspace ADMIN/OWNER
     const member = await this.prisma.workspaceMember.findUnique({

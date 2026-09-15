@@ -28,7 +28,7 @@ export class NotificationService {
         type: NotificationType.TASK_ASSIGNED,
         title: 'Task Assigned',
         message: `${event.actorName} assigned you to task "${event.title}"`,
-        link: `/workspaces/${event.workspaceId}/projects/${event.projectId}/boards/${event.boardId}/columns/${event.columnId}/tasks/${event.taskId}`,
+        link: `/tasks/${event.taskId}`,
       },
     });
   }
@@ -45,7 +45,7 @@ export class NotificationService {
         type: NotificationType.TASK_MENTION,
         title: 'Mentioned in Comment',
         message: `${event.actorName} mentioned you in task "${event.taskTitle}"`,
-        link: `/workspaces/${event.workspaceId}/projects/${event.projectId}/boards/${event.boardId}/columns/${event.columnId}/tasks/${event.taskId}`,
+        link: `/tasks/${event.taskId}`,
       },
     });
   }

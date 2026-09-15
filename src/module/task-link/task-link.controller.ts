@@ -21,9 +21,7 @@ import { UpdateTaskLinkDto } from './dto/update-task-link.dto';
 import { TaskLinkService } from './task-link.service';
 
 @ApiTags('Task Links')
-@Controller(
-  'workspaces/:workspaceId/projects/:projectId/boards/:boardId/columns/:columnId/tasks/:taskId/links',
-)
+@Controller('tasks/:taskId/links')
 export class TaskLinkController {
   constructor(private readonly taskLinkService: TaskLinkService) {}
 
@@ -37,23 +35,11 @@ export class TaskLinkController {
   @ResponseMessage('Task link created successfully')
   @ApiOperation({ summary: 'Attach an external link to a task' })
   createTaskLink(
-    @Param('workspaceId') workspaceId: string,
-    @Param('projectId') projectId: string,
-    @Param('boardId') boardId: string,
-    @Param('columnId') columnId: string,
     @Param('taskId') taskId: string,
     @Body() dto: CreateTaskLinkDto,
     @CurrentUser() user: User,
   ) {
-    return this.taskLinkService.createTaskLink(
-      workspaceId,
-      projectId,
-      boardId,
-      columnId,
-      taskId,
-      dto,
-      user,
-    );
+    return this.taskLinkService.createTaskLink(taskId, dto, user);
   }
 
   @Get()
@@ -65,20 +51,8 @@ export class TaskLinkController {
   )
   @ResponseMessage('Task links fetched successfully')
   @ApiOperation({ summary: 'Get all external links attached to a task' })
-  getTaskLinks(
-    @Param('workspaceId') workspaceId: string,
-    @Param('projectId') projectId: string,
-    @Param('boardId') boardId: string,
-    @Param('columnId') columnId: string,
-    @Param('taskId') taskId: string,
-  ) {
-    return this.taskLinkService.getTaskLinks(
-      workspaceId,
-      projectId,
-      boardId,
-      columnId,
-      taskId,
-    );
+  getTaskLinks(@Param('taskId') taskId: string) {
+    return this.taskLinkService.getTaskLinks(taskId);
   }
 
   @Get(':linkId')
@@ -91,21 +65,10 @@ export class TaskLinkController {
   @ResponseMessage('Task link fetched successfully')
   @ApiOperation({ summary: 'Get details of a single task link' })
   getSingleTaskLink(
-    @Param('workspaceId') workspaceId: string,
-    @Param('projectId') projectId: string,
-    @Param('boardId') boardId: string,
-    @Param('columnId') columnId: string,
     @Param('taskId') taskId: string,
     @Param('linkId') linkId: string,
   ) {
-    return this.taskLinkService.getSingleTaskLink(
-      workspaceId,
-      projectId,
-      boardId,
-      columnId,
-      taskId,
-      linkId,
-    );
+    return this.taskLinkService.getSingleTaskLink(taskId, linkId);
   }
 
   @Patch(':linkId')
@@ -118,25 +81,12 @@ export class TaskLinkController {
   @ResponseMessage('Task link updated successfully')
   @ApiOperation({ summary: 'Update a task link' })
   updateTaskLink(
-    @Param('workspaceId') workspaceId: string,
-    @Param('projectId') projectId: string,
-    @Param('boardId') boardId: string,
-    @Param('columnId') columnId: string,
     @Param('taskId') taskId: string,
     @Param('linkId') linkId: string,
     @Body() dto: UpdateTaskLinkDto,
     @CurrentUser() user: User,
   ) {
-    return this.taskLinkService.updateTaskLink(
-      workspaceId,
-      projectId,
-      boardId,
-      columnId,
-      taskId,
-      linkId,
-      dto,
-      user,
-    );
+    return this.taskLinkService.updateTaskLink(taskId, linkId, dto, user);
   }
 
   @Delete(':linkId')
@@ -149,22 +99,10 @@ export class TaskLinkController {
   @ResponseMessage('Task link deleted successfully')
   @ApiOperation({ summary: 'Delete a task link' })
   deleteTaskLink(
-    @Param('workspaceId') workspaceId: string,
-    @Param('projectId') projectId: string,
-    @Param('boardId') boardId: string,
-    @Param('columnId') columnId: string,
     @Param('taskId') taskId: string,
     @Param('linkId') linkId: string,
     @CurrentUser() user: User,
   ) {
-    return this.taskLinkService.deleteTaskLink(
-      workspaceId,
-      projectId,
-      boardId,
-      columnId,
-      taskId,
-      linkId,
-      user,
-    );
+    return this.taskLinkService.deleteTaskLink(taskId, linkId, user);
   }
 }

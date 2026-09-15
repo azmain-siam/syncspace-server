@@ -271,15 +271,21 @@ Legend:
     - [x] Collision-resistant workspace slug generation with nanoid suffixes (`slug.util.ts`, `workspace.service.ts`).
     - [x] Task deletion permission check: only creator or workspace ADMIN/OWNER can delete (`task.service.ts`).
     - [x] Kanban column move auto-synchronizes `Task.status` and emits `task.moved` realtime event (`move-task.dto.ts`, `task.service.ts`).
+22. [x] **Production Audit — Phase 1 Step 1B (Onboarding & Shallow REST Routes)**:
+    - [x] Workspace Onboarding Starter Seed: Auto-seed "General" project, "Main Board", columns ("To Do", "In Progress", "Done"), and starter guide tasks on workspace creation (`workspace.service.ts`).
+    - [x] Shallow REST Routes for Tasks (`/columns/:columnId/tasks`, `/tasks/:taskId`, `/tasks/:taskId/move`), Comments (`/tasks/:taskId/comments`), Attachments (`/tasks/:taskId/attachments`), and Links (`/tasks/:taskId/links`).
+    - [x] Dynamic RBAC Resolution in `WorkspaceRoleGuard` (queries DB to resolve workspaceId from `taskId`, `columnId`, or `projectId` when shallow routes are called).
+    - [x] Elimination of column-mismatch 404 race condition during task card moves (`verifyTaskById` & `verifyColumnById`).
 
 ---
 
 # Next Feature (What to do next)
 
 ```
-Current Sprint: Production Audit — Phase 1 Step 1B (Onboarding & API Ergonomics)
-1. Onboarding Starter Project Seed (auto-seed "General" project, Kanban board & starter cards on workspace creation).
-2. Shallow REST Routes for Tasks (/tasks/:taskId, /tasks/:taskId/comments, /tasks/:taskId/attachments).
+Current Sprint: Production Audit — Phase 2 (Team Collaboration & Identity)
+1. User Profile Management (GET/PATCH /api/v1/users/profile, upload avatar with Multer).
+2. Direct Task Assignment email notification queue job.
+3. System Activity Logging on Kanban column create/reorder/delete.
 ```
 
 

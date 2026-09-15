@@ -24,10 +24,6 @@ export class AttachmentService {
 
   // Upload Attachment via StorageService abstraction
   async uploadAttachment(
-    workspaceId: string,
-    projectId: string,
-    boardId: string,
-    columnId: string,
     taskId: string,
     file: Express.Multer.File,
     currentUser: User,
@@ -36,13 +32,10 @@ export class AttachmentService {
       throw new BadRequestException('File is required');
     }
 
-    const task = await this.entityValidationService.verifyTask(
-      workspaceId,
-      projectId,
-      boardId,
-      columnId,
-      taskId,
-    );
+    const task = await this.entityValidationService.verifyTaskById(taskId);
+    const workspaceId = task.column.board.project.workspaceId;
+    const projectId = task.column.board.project.id;
+    const boardId = task.column.board.id;
 
     // Upload via StorageService abstract layer
     const uploadResult = await this.storageService.upload(
@@ -88,20 +81,8 @@ export class AttachmentService {
   }
 
   // Get Task Attachments
-  async getTaskAttachments(
-    workspaceId: string,
-    projectId: string,
-    boardId: string,
-    columnId: string,
-    taskId: string,
-  ) {
-    await this.entityValidationService.verifyTask(
-      workspaceId,
-      projectId,
-      boardId,
-      columnId,
-      taskId,
-    );
+  async getTaskAttachments(taskId: string) {
+    await this.entityValidationService.verifyTaskById(taskId);
 
     return this.prisma.attachment.findMany({
       where: {
@@ -118,21 +99,14 @@ export class AttachmentService {
 
   // Delete Attachment
   async deleteAttachment(
-    workspaceId: string,
-    projectId: string,
-    boardId: string,
-    columnId: string,
     taskId: string,
     attachmentId: string,
     currentUser: User,
   ) {
-    await this.entityValidationService.verifyTask(
-      workspaceId,
-      projectId,
-      boardId,
-      columnId,
-      taskId,
-    );
+    const task = await this.entityValidationService.verifyTaskById(taskId);
+    const workspaceId = task.column.board.project.workspaceId;
+    const projectId = task.column.board.project.id;
+    const boardId = task.column.board.id;
 
     const attachment = await this.prisma.attachment.findFirst({
       where: {

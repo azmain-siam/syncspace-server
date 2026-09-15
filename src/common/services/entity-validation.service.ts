@@ -102,4 +102,83 @@ export class EntityValidationService {
 
     return member;
   }
+
+  // Verify task exists by taskId regardless of column movement (robust against race conditions)
+  async verifyTaskById(taskId: string) {
+    const task = await this.prisma.task.findFirst({
+      where: {
+        id: taskId,
+        deletedAt: null,
+        column: {
+          board: {
+            project: {
+              deletedAt: null,
+              workspace: {
+                deletedAt: null,
+              },
+            },
+          },
+        },
+      },
+      include: {
+        column: {
+          include: {
+            board: {
+              include: {
+                project: {
+                  select: {
+                    id: true,
+                    workspaceId: true,
+                    title: true,
+                  },
+                },
+              },
+            },
+          },
+        },
+      },
+    });
+
+    if (!task) {
+      throw new NotFoundException('Task not found');
+    }
+
+    return task;
+  }
+
+  // Verify column exists by columnId
+  async verifyColumnById(columnId: string) {
+    const column = await this.prisma.boardColumn.findFirst({
+      where: {
+        id: columnId,
+        board: {
+          project: {
+            deletedAt: null,
+            workspace: {
+              deletedAt: null,
+            },
+          },
+        },
+      },
+      include: {
+        board: {
+          include: {
+            project: {
+              select: {
+                id: true,
+                workspaceId: true,
+                title: true,
+              },
+            },
+          },
+        },
+      },
+    });
+
+    if (!column) {
+      throw new NotFoundException('Column not found');
+    }
+
+    return column;
+  }
 }

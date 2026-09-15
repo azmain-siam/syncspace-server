@@ -23,9 +23,7 @@ import { CreateCommentDto } from './dto/create-comment.dto';
 import { UpdateCommentDto } from './dto/update-comment.dto';
 
 @ApiTags('Comments')
-@Controller(
-  'workspaces/:workspaceId/projects/:projectId/boards/:boardId/columns/:columnId/tasks/:taskId/comments',
-)
+@Controller('tasks/:taskId/comments')
 export class CommentController {
   constructor(private readonly commentService: CommentService) {}
 
@@ -41,23 +39,11 @@ export class CommentController {
     summary: 'Add comment to a task (supports @username mentions)',
   })
   createComment(
-    @Param('workspaceId') workspaceId: string,
-    @Param('projectId') projectId: string,
-    @Param('boardId') boardId: string,
-    @Param('columnId') columnId: string,
     @Param('taskId') taskId: string,
     @Body() dto: CreateCommentDto,
     @CurrentUser() user: User,
   ) {
-    return this.commentService.createComment(
-      workspaceId,
-      projectId,
-      boardId,
-      columnId,
-      taskId,
-      dto,
-      user,
-    );
+    return this.commentService.createComment(taskId, dto, user);
   }
 
   @Get()
@@ -70,21 +56,10 @@ export class CommentController {
   @ResponseMessage('Task comments fetched successfully')
   @ApiOperation({ summary: 'Get task comments using cursor-based pagination' })
   getTaskComments(
-    @Param('workspaceId') workspaceId: string,
-    @Param('projectId') projectId: string,
-    @Param('boardId') boardId: string,
-    @Param('columnId') columnId: string,
     @Param('taskId') taskId: string,
     @Query() query: CommentCursorQueryDto,
   ) {
-    return this.commentService.getTaskComments(
-      workspaceId,
-      projectId,
-      boardId,
-      columnId,
-      taskId,
-      query,
-    );
+    return this.commentService.getTaskComments(taskId, query);
   }
 
   @Get(':commentId')
@@ -97,21 +72,10 @@ export class CommentController {
   @ResponseMessage('Comment fetched successfully')
   @ApiOperation({ summary: 'Get single comment details' })
   getComment(
-    @Param('workspaceId') workspaceId: string,
-    @Param('projectId') projectId: string,
-    @Param('boardId') boardId: string,
-    @Param('columnId') columnId: string,
     @Param('taskId') taskId: string,
     @Param('commentId') commentId: string,
   ) {
-    return this.commentService.getComment(
-      workspaceId,
-      projectId,
-      boardId,
-      columnId,
-      taskId,
-      commentId,
-    );
+    return this.commentService.getComment(taskId, commentId);
   }
 
   @Patch(':commentId')
@@ -124,25 +88,12 @@ export class CommentController {
   @ResponseMessage('Comment updated successfully')
   @ApiOperation({ summary: 'Update comment content' })
   updateComment(
-    @Param('workspaceId') workspaceId: string,
-    @Param('projectId') projectId: string,
-    @Param('boardId') boardId: string,
-    @Param('columnId') columnId: string,
     @Param('taskId') taskId: string,
     @Param('commentId') commentId: string,
     @Body() dto: UpdateCommentDto,
     @CurrentUser() user: User,
   ) {
-    return this.commentService.updateComment(
-      workspaceId,
-      projectId,
-      boardId,
-      columnId,
-      taskId,
-      commentId,
-      dto,
-      user,
-    );
+    return this.commentService.updateComment(taskId, commentId, dto, user);
   }
 
   @Delete(':commentId')
@@ -155,22 +106,10 @@ export class CommentController {
   @ResponseMessage('Comment deleted successfully')
   @ApiOperation({ summary: 'Soft delete comment' })
   deleteComment(
-    @Param('workspaceId') workspaceId: string,
-    @Param('projectId') projectId: string,
-    @Param('boardId') boardId: string,
-    @Param('columnId') columnId: string,
     @Param('taskId') taskId: string,
     @Param('commentId') commentId: string,
     @CurrentUser() user: User,
   ) {
-    return this.commentService.deleteComment(
-      workspaceId,
-      projectId,
-      boardId,
-      columnId,
-      taskId,
-      commentId,
-      user,
-    );
+    return this.commentService.deleteComment(taskId, commentId, user);
   }
 }
