@@ -38,7 +38,7 @@ Ensure you have a `.env` file configured (see `.env.example`).
 - **API Responses:** Normalized using a global interceptor.
 
 ## Key Directories
-
+- `.ai/`: Contains AI-related files and project docs.
 - `src/module/`: Contains feature modules (auth, email, project, user, workspace).
 - `src/common/`: Shared utilities, decorators, guards, and base classes.
 - `prisma/`: Database schema and migration files.
