@@ -35,6 +35,8 @@ export class DashboardService {
       overdueTasks,
       membersCount,
       activitiesCount,
+      totalCapacity,
+      completedCapacity,
     ] = await Promise.all([
       // Projects count
       this.prisma.project.count({
@@ -80,6 +82,28 @@ export class DashboardService {
       this.prisma.workspaceActivity.count({
         where: { workspaceId },
       }),
+      // Total story points and estimated hours
+      this.prisma.task.aggregate({
+        where: {
+          deletedAt: null,
+          column: { board: { project: { workspaceId, deletedAt: null } } },
+        },
+        _sum: {
+          storyPoints: true,
+          estimatedHours: true,
+        },
+      }),
+      // Completed story points
+      this.prisma.task.aggregate({
+        where: {
+          deletedAt: null,
+          status: TaskStatus.DONE,
+          column: { board: { project: { workspaceId, deletedAt: null } } },
+        },
+        _sum: {
+          storyPoints: true,
+        },
+      }),
     ]);
 
     const completionPercentage =
@@ -94,6 +118,9 @@ export class DashboardService {
       membersCount,
       activitiesCount,
       completionPercentage,
+      totalStoryPoints: totalCapacity._sum.storyPoints || 0,
+      completedStoryPoints: completedCapacity._sum.storyPoints || 0,
+      totalEstimatedHours: totalCapacity._sum.estimatedHours || 0,
     };
   }
 
@@ -207,21 +234,38 @@ export class DashboardService {
           column: { board: { project: { workspaceId, deletedAt: null } } },
         };
 
-        const [assignedCount, completedCount, overdueCount] = await Promise.all(
-          [
-            this.prisma.task.count({ where: taskWhere }),
-            this.prisma.task.count({
-              where: { ...taskWhere, status: TaskStatus.DONE },
-            }),
-            this.prisma.task.count({
-              where: {
-                ...taskWhere,
-                dueDate: { lt: now },
-                status: { not: TaskStatus.DONE },
-              },
-            }),
-          ],
-        );
+        const [
+          assignedCount,
+          completedCount,
+          overdueCount,
+          capacityAgg,
+          completedCapacityAgg,
+        ] = await Promise.all([
+          this.prisma.task.count({ where: taskWhere }),
+          this.prisma.task.count({
+            where: { ...taskWhere, status: TaskStatus.DONE },
+          }),
+          this.prisma.task.count({
+            where: {
+              ...taskWhere,
+              dueDate: { lt: now },
+              status: { not: TaskStatus.DONE },
+            },
+          }),
+          this.prisma.task.aggregate({
+            where: taskWhere,
+            _sum: {
+              storyPoints: true,
+              estimatedHours: true,
+            },
+          }),
+          this.prisma.task.aggregate({
+            where: { ...taskWhere, status: TaskStatus.DONE },
+            _sum: {
+              storyPoints: true,
+            },
+          }),
+        ]);
 
         const completionRate =
           assignedCount > 0
@@ -236,6 +280,9 @@ export class DashboardService {
           completedCount,
           overdueCount,
           completionRate,
+          totalStoryPoints: capacityAgg._sum.storyPoints || 0,
+          completedStoryPoints: completedCapacityAgg._sum.storyPoints || 0,
+          totalEstimatedHours: capacityAgg._sum.estimatedHours || 0,
         };
       }),
     );

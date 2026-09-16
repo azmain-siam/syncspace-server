@@ -18,6 +18,7 @@ import { CommentModule } from './module/comment/comment.module';
 import { EmailModule } from './module/email/email.module';
 import { PrismaModule } from './module/prisma/prisma.module';
 import { ProjectModule } from './module/project/project.module';
+import { SprintModule } from './module/sprint/sprint.module';
 import { LabelModule } from './module/label/label.module';
 import { TaskChecklistModule } from './module/task-checklist/task-checklist.module';
 import { TaskLinkModule } from './module/task-link/task-link.module';
@@ -69,6 +70,7 @@ import { TrashModule } from './module/trash/trash.module';
     RealtimeModule,
     WorkspaceModule,
     ProjectModule,
+    SprintModule,
     ActivityModule,
     BoardModule,
     ColumnModule,

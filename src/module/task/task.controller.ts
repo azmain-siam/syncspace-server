@@ -17,6 +17,8 @@ import { WorkspaceRoleGuard } from 'src/common/guards/workspace-role.guard';
 import type { User } from 'src/common/interfaces/user.interface';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { WorkspaceRole } from '../workspace/enums/workspace-role.enum';
+import { BulkDeleteTasksDto } from './dto/bulk-delete-tasks.dto';
+import { BulkUpdateTasksDto } from './dto/bulk-update-tasks.dto';
 import { CreateTaskDto } from './dto/create-task.dto';
 import { MoveTaskDto } from './dto/move-task.dto';
 import { MyTasksQueryDto } from './dto/my-tasks-query.dto';
@@ -139,5 +141,21 @@ export class TaskController {
   @ApiOperation({ summary: 'Delete task' })
   deleteTask(@Param('taskId') taskId: string, @CurrentUser() user: User) {
     return this.taskService.deleteTask(taskId, user);
+  }
+
+  @Post(['tasks/bulk-update', 'workspaces/:workspaceId/tasks/bulk-update'])
+  @UseGuards(JwtAuthGuard)
+  @ResponseMessage('Tasks updated successfully in bulk')
+  @ApiOperation({ summary: 'Bulk update multiple tasks' })
+  bulkUpdateTasks(@Body() dto: BulkUpdateTasksDto, @CurrentUser() user: User) {
+    return this.taskService.bulkUpdateTasks(dto, user);
+  }
+
+  @Post(['tasks/bulk-delete', 'workspaces/:workspaceId/tasks/bulk-delete'])
+  @UseGuards(JwtAuthGuard)
+  @ResponseMessage('Tasks deleted successfully in bulk')
+  @ApiOperation({ summary: 'Bulk delete multiple tasks' })
+  bulkDeleteTasks(@Body() dto: BulkDeleteTasksDto, @CurrentUser() user: User) {
+    return this.taskService.bulkDeleteTasks(dto, user);
   }
 }

@@ -20,6 +20,7 @@ import { WorkspaceRole } from '../workspace/enums/workspace-role.enum';
 import { CommentService } from './comment.service';
 import { CommentCursorQueryDto } from './dto/comment-cursor-query.dto';
 import { CreateCommentDto } from './dto/create-comment.dto';
+import { ToggleReactionDto } from './dto/toggle-reaction.dto';
 import { UpdateCommentDto } from './dto/update-comment.dto';
 
 @ApiTags('Comments')
@@ -60,8 +61,9 @@ export class CommentController {
   getTaskComments(
     @Param('taskId') taskId: string,
     @Query() query: CommentCursorQueryDto,
+    @CurrentUser() user: User,
   ) {
-    return this.commentService.getTaskComments(taskId, query);
+    return this.commentService.getTaskComments(taskId, query, user);
   }
 
   @Get(':commentId')
@@ -77,8 +79,46 @@ export class CommentController {
   getComment(
     @Param('taskId') taskId: string,
     @Param('commentId') commentId: string,
+    @CurrentUser() user: User,
   ) {
-    return this.commentService.getComment(taskId, commentId);
+    return this.commentService.getComment(taskId, commentId, user);
+  }
+
+  @Post(':commentId/reactions')
+  @UseGuards(JwtAuthGuard, WorkspaceRoleGuard)
+  @WorkspaceRoles(
+    WorkspaceRole.OWNER,
+    WorkspaceRole.ADMIN,
+    WorkspaceRole.MEMBER,
+    WorkspaceRole.GUEST,
+  )
+  @ResponseMessage('Comment reaction updated successfully')
+  @ApiOperation({ summary: 'Toggle emoji reaction on a comment' })
+  toggleReaction(
+    @Param('taskId') taskId: string,
+    @Param('commentId') commentId: string,
+    @Body() dto: ToggleReactionDto,
+    @CurrentUser() user: User,
+  ) {
+    return this.commentService.toggleReaction(taskId, commentId, dto, user);
+  }
+
+  @Get(':commentId/reactions')
+  @UseGuards(JwtAuthGuard, WorkspaceRoleGuard)
+  @WorkspaceRoles(
+    WorkspaceRole.OWNER,
+    WorkspaceRole.ADMIN,
+    WorkspaceRole.MEMBER,
+    WorkspaceRole.GUEST,
+  )
+  @ResponseMessage('Comment reactions fetched successfully')
+  @ApiOperation({ summary: 'Get all reactions grouped by emoji for a comment' })
+  getCommentReactions(
+    @Param('taskId') taskId: string,
+    @Param('commentId') commentId: string,
+    @CurrentUser() user: User,
+  ) {
+    return this.commentService.getCommentReactions(taskId, commentId, user);
   }
 
   @Patch(':commentId')

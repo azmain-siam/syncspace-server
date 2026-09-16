@@ -189,4 +189,55 @@ export class EntityValidationService {
 
     return column;
   }
+
+  // Verify project exists by projectId
+  async verifyProjectById(projectId: string) {
+    const project = await this.prisma.project.findFirst({
+      where: {
+        id: projectId,
+        deletedAt: null,
+        workspace: {
+          deletedAt: null,
+        },
+      },
+      include: {
+        workspace: true,
+      },
+    });
+
+    if (!project) {
+      throw new NotFoundException('Project not found');
+    }
+
+    return project;
+  }
+
+  // Verify sprint exists by sprintId
+  async verifySprintById(sprintId: string) {
+    const sprint = await this.prisma.sprint.findFirst({
+      where: {
+        id: sprintId,
+        deletedAt: null,
+        project: {
+          deletedAt: null,
+          workspace: {
+            deletedAt: null,
+          },
+        },
+      },
+      include: {
+        project: {
+          include: {
+            workspace: true,
+          },
+        },
+      },
+    });
+
+    if (!sprint) {
+      throw new NotFoundException('Sprint not found');
+    }
+
+    return sprint;
+  }
 }

@@ -320,9 +320,12 @@ Legend:
 
 ---
 
-#### Phase 4: Agile Scale & Real-Time Polish (Status: ⏳ Planned)
-- [ ] **17. Sprints / Milestones & Dedicated Backlog View:** Create `Sprint` entity and backlog triage support to prevent board clutter (`sprint.service.ts`, `sprint.controller.ts`).
-- [ ] **18. Effort Estimation (Story Points & Estimated Hours):** Add capacity planning fields to `Task` and update dashboard workload analytics (`task.service.ts`, `dashboard.service.ts`).
-- [ ] **19. Task Bulk Operations:** Implement `POST /tasks/bulk-update` and `POST /tasks/bulk-delete` for rapid backlog grooming (`task.service.ts`, `task.controller.ts`).
+#### Phase 4: Agile Scale & Real-Time Polish (Status: 🚧 Current Phase)
+##### Subphase 4A: Agile Sprints, Backlog Triage, Estimation & Bulk Ops (Status: ✅ Completed)
+- [x] **17. Sprints / Milestones & Dedicated Backlog View:** Create `Sprint` entity and backlog triage support to prevent board clutter (`sprint.service.ts`, `sprint.controller.ts`, `sprint.module.ts`).
+- [x] **18. Effort Estimation (Story Points & Estimated Hours):** Add capacity planning fields to `Task` and update dashboard workload analytics (`task.service.ts`, `dashboard.service.ts`).
+- [x] **19. Task Bulk Operations:** Implement `POST /tasks/bulk-update` and `POST /tasks/bulk-delete` for rapid backlog grooming (`task.service.ts`, `task.controller.ts`).
+
+##### Subphase 4B: Distributed Real-Time Scale & Interactive Polish (Status: ⏳ Planned Next)
 - [ ] **20. Socket.IO Redis Adapter Presence:** Configure distributed Redis adapter (`@socket.io/redis-adapter`) for scalable presence tracking across multiple server instances (`realtime.gateway.ts`).
 - [ ] **21. Comment Emoji Reactions:** Implement `CommentReaction` model and reaction toggle endpoints (`comment.service.ts`, `comment.controller.ts`).
