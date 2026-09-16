@@ -291,14 +291,41 @@ Legend:
     - [x] Task Effort Estimation (`storyPoints`, `estimatedHours`, `isBacklog`, `sprintId` on `Task` + dashboard capacity analytics).
     - [x] Task Bulk Operations (`POST /tasks/bulk-update` and `POST /tasks/bulk-delete` with workspace security checks).
 
+27. [x] **Production Audit — Phase 4 (Subphase 4B: Distributed Real-Time Scale & Interactive Polish)**:
+    - [x] Socket.IO Redis Adapter Presence: Configured `@socket.io/redis-adapter` on root server instance with Redis presence tracking (`isUserOnline`, `getOnlineUserIdsInWorkspace`, heartbeat fallbacks).
+    - [x] Comment Emoji Reactions: `CommentReaction` model, compound unique key, reaction toggle endpoint (`POST /tasks/:taskId/comments/:commentId/reactions`), grouped reaction counts with `hasReacted` flag, and `comment:reaction` realtime event broadcast.
+28. [x] **Production Audit — Phase 5 (Subphase 5A: Real-Time Event Pipeline & Search Accuracy)**:
+    - [x] Wire Domain Real-Time Events: Emitted `task.created` in `TaskService.createTask`, `task.updated` in `TaskService.updateTask`, `task.deleted` in `TaskService.deleteTask`, and `notification.created` in `NotificationService` (upon task assignment, comment mention, and workspace invitation).
+    - [x] Global Search by Task Key: Included `{ key: { contains: searchTerm, mode: 'insensitive' } }` and selected `key` in `SearchService.searchWorkspace`.
+    - [x] Added Unit Test Suites: Created `notification.service.spec.ts` (7 tests) and expanded `task.service.spec.ts` (3 new tests for domain event emission).
+
 ---
 
-# Next Feature (What to do next)
+# Next Phase: Phase 5 — MVP Hardening, Real-Time Wiring & Cloud Production Readiness
 
+```text
+Current Sprint: Phase 5 (Subphase 5B: Lifecycle Governance & Cloud Readiness)
+
+Subphase 5B: Lifecycle Governance & Cloud Readiness
+1. Cloud Health Probe Endpoint:
+   - Implement HealthModule with GET /health (uptime, status, db ping) excluded from /api/v1
+2. Workspace Lifecycle & Departure:
+   - Implement DELETE /workspaces/:workspaceId (soft-delete by Owner)
+   - Implement POST /workspaces/:workspaceId/leave (voluntary exit for non-owners)
+3. Docker & Container Orchestration:
+   - Align Redis password in docker-compose.yml (--requirepass password)
+   - Add production multi-stage Dockerfile
 ```
-Current Sprint: Production Audit — Phase 4 (Subphase 4B: Distributed Real-Time Scale & Interactive Polish)
-1. Socket.IO Redis Adapter Presence (Distributed WebSocket scaling via @socket.io/redis-adapter).
-2. Comment Emoji Reactions (CommentReaction entity & toggle endpoints).
+
+---
+
+# Future Phase: Phase 6 — Advanced Team Collaboration & Scaling (Post-MVP)
+
+```text
+Phase 6 Planned Scope:
+1. Task Dependencies & Blockers (BLOCKS, IS_BLOCKED_BY, RELATES_TO with circular dependency detection).
+2. Multi-Assignees on Tasks (TaskAssignee join model for pair programming).
+3. Project Visibility & Member Privacy (PUBLIC vs PRIVATE projects with ProjectMember authorization).
 ```
 
 

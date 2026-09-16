@@ -296,22 +296,38 @@ export class RealtimeService implements OnModuleDestroy {
   }
 
   @OnEvent('task.updated')
-  handleTaskUpdated(payload: { task: any; boardId: string; taskId: string }) {
+  handleTaskUpdated(payload: {
+    task: any;
+    boardId: string;
+    taskId: string;
+    workspaceId?: string;
+  }) {
     if (!this.server) return;
     this.logger.log(`[Realtime Event] task.updated for task ${payload.taskId}`);
-    this.server
+    const target = this.server
       .to(`board:${payload.boardId}`)
-      .to(`task:${payload.taskId}`)
-      .emit('task:updated', payload);
+      .to(`task:${payload.taskId}`);
+    if (payload.workspaceId) {
+      target.to(`workspace:${payload.workspaceId}`);
+    }
+    target.emit('task:updated', payload);
   }
 
   @OnEvent('task.deleted')
-  handleTaskDeleted(payload: { taskId: string; boardId: string }) {
+  handleTaskDeleted(payload: {
+    taskId: string;
+    boardId: string;
+    workspaceId?: string;
+  }) {
     if (!this.server) return;
     this.logger.log(
       `[Realtime Event] task.deleted on board ${payload.boardId}`,
     );
-    this.server.to(`board:${payload.boardId}`).emit('task:deleted', payload);
+    const target = this.server.to(`board:${payload.boardId}`);
+    if (payload.workspaceId) {
+      target.to(`workspace:${payload.workspaceId}`);
+    }
+    target.emit('task:deleted', payload);
   }
 
   @OnEvent('comment.created')

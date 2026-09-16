@@ -320,12 +320,46 @@ Legend:
 
 ---
 
-#### Phase 4: Agile Scale & Real-Time Polish (Status: 🚧 Current Phase)
+#### Phase 4: Agile Scale & Real-Time Polish (Status: ✅ Completed)
 ##### Subphase 4A: Agile Sprints, Backlog Triage, Estimation & Bulk Ops (Status: ✅ Completed)
 - [x] **17. Sprints / Milestones & Dedicated Backlog View:** Create `Sprint` entity and backlog triage support to prevent board clutter (`sprint.service.ts`, `sprint.controller.ts`, `sprint.module.ts`).
 - [x] **18. Effort Estimation (Story Points & Estimated Hours):** Add capacity planning fields to `Task` and update dashboard workload analytics (`task.service.ts`, `dashboard.service.ts`).
 - [x] **19. Task Bulk Operations:** Implement `POST /tasks/bulk-update` and `POST /tasks/bulk-delete` for rapid backlog grooming (`task.service.ts`, `task.controller.ts`).
 
-##### Subphase 4B: Distributed Real-Time Scale & Interactive Polish (Status: ⏳ Planned Next)
-- [ ] **20. Socket.IO Redis Adapter Presence:** Configure distributed Redis adapter (`@socket.io/redis-adapter`) for scalable presence tracking across multiple server instances (`realtime.gateway.ts`).
-- [ ] **21. Comment Emoji Reactions:** Implement `CommentReaction` model and reaction toggle endpoints (`comment.service.ts`, `comment.controller.ts`).
+##### Subphase 4B: Distributed Real-Time Scale & Interactive Polish (Status: ✅ Completed)
+- [x] **20. Socket.IO Redis Adapter Presence:** Configure distributed Redis adapter (`@socket.io/redis-adapter`) for scalable presence tracking across multiple server instances (`realtime.gateway.ts`, `realtime.service.ts`).
+- [x] **21. Comment Emoji Reactions:** Implement `CommentReaction` model and reaction toggle endpoints (`comment.service.ts`, `comment.controller.ts`).
+
+---
+
+#### Phase 5: MVP Hardening, Real-Time Wiring & Cloud Production Readiness (Status: ⏳ Planned Next)
+
+> **Lead Architect Note:** Before introducing post-MVP complexity (such as dependency DAGs and multi-assignee schemas), this phase addresses the 5 critical "last-mile" gaps identified in the architectural audit to ensure the core MVP is 100% interconnected, cloud-deployable, and glitch-free.
+
+##### Subphase 5A: Real-Time Event Pipeline & Search Accuracy (Status: ✅ Completed)
+- [x] **22. Real-Time Domain Event Pipeline Wiring:**
+  - Emit `task.created` in `TaskService.createTask` (triggers live board card insertion).
+  - Emit `task.updated` in `TaskService.updateTask` (triggers live card property sync).
+  - Emit `task.deleted` in `TaskService.deleteTask` (triggers live card removal).
+  - Emit `notification.created` in `NotificationService` (triggers instant socket toast to `user:{userId}`).
+- [x] **23. Human Task Key Global Search:**
+  - Add `{ key: { contains: searchTerm, mode: 'insensitive' } }` to `SearchService.searchWorkspace` so engineers can search directly by `GEN-1` or `SYNC-101`.
+
+##### Subphase 5B: Lifecycle Governance & Cloud Readiness (Status: ⏳ Planned)
+- [ ] **24. Cloud Health Probe Endpoint (`GET /health`):**
+  - Implement a dedicated `HealthModule` excluded from global `/api/v1` prefix.
+  - Return `{ status: 'ok', uptime, timestamp, database: 'connected' }` to satisfy Kubernetes, AWS ECS, Render, and GCP Cloud Run liveness/readiness probes.
+- [ ] **25. Workspace Lifecycle & Voluntary Exit:**
+  - Implement `DELETE /workspaces/:workspaceId` (soft-delete workspace by Owner).
+  - Implement `POST /workspaces/:workspaceId/leave` (allow non-owner members and guests to depart a workspace cleanly).
+- [ ] **26. Container Orchestration & Docker Alignment:**
+  - Update `docker-compose.yml` Redis service with `--requirepass ${REDIS_PASSWORD:-password}` to eliminate client connection auth crashes.
+  - Add production multi-stage `Dockerfile` (build, prune, dist run) for one-command local and cloud containerization.
+
+---
+
+#### Phase 6: Advanced Team Collaboration & Scaling (Post-MVP) (Status: ⏳ Future)
+- [ ] **27. Task Dependencies & Blockers:** `TaskDependency` join model (`blockingTaskId`, `blockedTaskId`, `dependencyType: BLOCKS | RELATES_TO | DUPLICATES`) with circular dependency detection and validation.
+- [ ] **28. Multi-Assignees on Tasks:** Support multiple assignees per task (`TaskAssignee` join table) for pair programming and cross-functional teams.
+- [ ] **29. Project Visibility & Member Privacy:** `visibility: PUBLIC | PRIVATE` on `Project`, enforcing strict access control via `ProjectMember` for private projects.
+
