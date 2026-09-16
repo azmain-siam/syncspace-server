@@ -14,6 +14,7 @@ import { ActivityAction } from '../activity/enums/activity-action.enum';
 import { PrismaService } from '../prisma/prisma.service';
 import { CommentCursorQueryDto } from './dto/comment-cursor-query.dto';
 import { CreateCommentDto } from './dto/create-comment.dto';
+import { ToggleReactionDto } from './dto/toggle-reaction.dto';
 import { UpdateCommentDto } from './dto/update-comment.dto';
 import { CommentEventType } from './events/comment-events.enum';
 import {
@@ -162,8 +163,54 @@ export class CommentService {
     });
   }
 
+  // Helper to aggregate reactions by emoji
+  groupReactions(
+    reactions: Array<{
+      id: string;
+      emoji: string;
+      userId: string;
+      user: { id: string; name: string; avatar: string | null };
+    }> = [],
+    currentUserId?: string,
+  ) {
+    const list = Array.isArray(reactions) ? reactions : [];
+    const map = new Map<
+      string,
+      {
+        emoji: string;
+        count: number;
+        hasReacted: boolean;
+        users: Array<{ id: string; name: string; avatar: string | null }>;
+      }
+    >();
+
+    for (const r of list) {
+      let entry = map.get(r.emoji);
+      if (!entry) {
+        entry = {
+          emoji: r.emoji,
+          count: 0,
+          hasReacted: false,
+          users: [],
+        };
+        map.set(r.emoji, entry);
+      }
+      entry.count++;
+      if (currentUserId && r.userId === currentUserId) {
+        entry.hasReacted = true;
+      }
+      entry.users.push(r.user);
+    }
+
+    return Array.from(map.values());
+  }
+
   // Get Task Comments (Cursor Pagination)
-  async getTaskComments(taskId: string, query: CommentCursorQueryDto) {
+  async getTaskComments(
+    taskId: string,
+    query: CommentCursorQueryDto,
+    currentUser?: User,
+  ) {
     await this.entityValidationService.verifyTaskById(taskId);
 
     const limit = query.limit ?? 20;
@@ -186,6 +233,12 @@ export class CommentService {
         : {}),
       include: {
         user: { select: SAFE_USER_MINIMAL_SELECT },
+        reactions: {
+          include: {
+            user: { select: SAFE_USER_MINIMAL_SELECT },
+          },
+          orderBy: { createdAt: 'asc' },
+        },
       },
     });
 
@@ -198,8 +251,16 @@ export class CommentService {
       nextCursor = comments[comments.length - 1]?.id || null;
     }
 
+    const formattedComments = comments.map((comment) => {
+      const { reactions, ...rest } = comment;
+      return {
+        ...rest,
+        reactions: this.groupReactions(reactions, currentUser?.id),
+      };
+    });
+
     return {
-      comments,
+      comments: formattedComments,
       meta: {
         limit,
         hasNextPage,
@@ -209,7 +270,7 @@ export class CommentService {
   }
 
   // Get single comment
-  async getComment(taskId: string, commentId: string) {
+  async getComment(taskId: string, commentId: string, currentUser?: User) {
     await this.entityValidationService.verifyTaskById(taskId);
 
     const comment = await this.prisma.comment.findFirst({
@@ -220,6 +281,12 @@ export class CommentService {
       },
       include: {
         user: { select: SAFE_USER_MINIMAL_SELECT },
+        reactions: {
+          include: {
+            user: { select: SAFE_USER_MINIMAL_SELECT },
+          },
+          orderBy: { createdAt: 'asc' },
+        },
       },
     });
 
@@ -227,7 +294,11 @@ export class CommentService {
       throw new NotFoundException('Comment not found');
     }
 
-    return comment;
+    const { reactions, ...rest } = comment;
+    return {
+      ...rest,
+      reactions: this.groupReactions(reactions, currentUser?.id),
+    };
   }
 
   // Update Comment
@@ -359,5 +430,142 @@ export class CommentService {
 
       return null;
     });
+  }
+
+  // Toggle Emoji Reaction (Add if not present, remove if already reacted)
+  async toggleReaction(
+    taskId: string,
+    commentId: string,
+    dto: ToggleReactionDto,
+    currentUser: User,
+  ) {
+    const task = await this.entityValidationService.verifyTaskById(taskId);
+    const workspaceId = task.column.board.project.workspaceId;
+    const projectId = task.column.board.project.id;
+    const boardId = task.column.board.id;
+
+    // Verify comment exists and belongs to task
+    const comment = await this.prisma.comment.findFirst({
+      where: {
+        id: commentId,
+        taskId,
+        deletedAt: null,
+      },
+    });
+
+    if (!comment) {
+      throw new NotFoundException('Comment not found');
+    }
+
+    const existingReaction = await this.prisma.commentReaction.findUnique({
+      where: {
+        commentId_userId_emoji: {
+          commentId,
+          userId: currentUser.id,
+          emoji: dto.emoji,
+        },
+      },
+    });
+
+    let action: 'added' | 'removed';
+
+    if (existingReaction) {
+      await this.prisma.commentReaction.delete({
+        where: { id: existingReaction.id },
+      });
+      action = 'removed';
+
+      await this.activityService.createActivityLog(this.prisma, {
+        workspaceId,
+        actorId: currentUser.id,
+        projectId,
+        boardId,
+        taskId,
+        action: ActivityAction.COMMENT_REACTION_REMOVED,
+        description: `${currentUser.name} unreacted ${dto.emoji} from a comment`,
+        metadata: {
+          commentId,
+          taskId,
+          emoji: dto.emoji,
+        },
+      });
+    } else {
+      await this.prisma.commentReaction.create({
+        data: {
+          commentId,
+          userId: currentUser.id,
+          emoji: dto.emoji,
+        },
+      });
+      action = 'added';
+
+      await this.activityService.createActivityLog(this.prisma, {
+        workspaceId,
+        actorId: currentUser.id,
+        projectId,
+        boardId,
+        taskId,
+        action: ActivityAction.COMMENT_REACTION_ADDED,
+        description: `${currentUser.name} reacted ${dto.emoji} to a comment`,
+        metadata: {
+          commentId,
+          taskId,
+          emoji: dto.emoji,
+        },
+      });
+    }
+
+    const reactions = await this.getCommentReactions(
+      taskId,
+      commentId,
+      currentUser,
+    );
+
+    this.eventEmitter.emit('comment.reaction_updated', {
+      commentId,
+      taskId,
+      action,
+      emoji: dto.emoji,
+      actorId: currentUser.id,
+      actorName: currentUser.name,
+      reactions,
+    });
+
+    return {
+      action,
+      emoji: dto.emoji,
+      reactions,
+    };
+  }
+
+  // Get aggregated reactions for a comment
+  async getCommentReactions(
+    taskId: string,
+    commentId: string,
+    currentUser?: User,
+  ) {
+    await this.entityValidationService.verifyTaskById(taskId);
+
+    const comment = await this.prisma.comment.findFirst({
+      where: {
+        id: commentId,
+        taskId,
+        deletedAt: null,
+      },
+    });
+
+    if (!comment) {
+      throw new NotFoundException('Comment not found');
+    }
+
+    const allReactions = await this.prisma.commentReaction.findMany({
+      where: { commentId },
+      include: {
+        user: { select: SAFE_USER_MINIMAL_SELECT },
+      },
+      orderBy: { createdAt: 'asc' },
+    });
+
+    return this.groupReactions(allReactions, currentUser?.id);
   }
 }

@@ -1,62 +1,165 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger, OnModuleDestroy } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { OnEvent } from '@nestjs/event-emitter';
+import Redis from 'ioredis';
 import { Server } from 'socket.io';
 import { PrismaService } from '../prisma/prisma.service';
 import { RoomType } from './dto/join-room.dto';
 
 @Injectable()
-export class RealtimeService {
+export class RealtimeService implements OnModuleDestroy {
   private readonly logger = new Logger(RealtimeService.name);
   private server?: Server;
 
-  // Track online users: userId -> Set<socketId>
+  // Track online users locally: userId -> Set<socketId>
   private readonly onlineUsers = new Map<string, Set<string>>();
 
-  constructor(private readonly prisma: PrismaService) {}
+  // Distributed Redis presence client
+  private redisClient?: Redis;
+  private isRedisAvailable = false;
+
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly configService: ConfigService,
+  ) {
+    this.initRedisPresence();
+  }
+
+  private initRedisPresence() {
+    const host = this.configService.get<string>('redis.host', 'localhost');
+    const port = this.configService.get<number>('redis.port', 6379);
+    const password =
+      this.configService.get<string>('redis.password') || undefined;
+
+    try {
+      this.redisClient = new Redis({
+        host,
+        port,
+        password,
+        lazyConnect: true,
+        maxRetriesPerRequest: 1,
+        enableOfflineQueue: false,
+      });
+
+      this.redisClient.on('connect', () => {
+        this.isRedisAvailable = true;
+        this.logger.log('Redis connected for distributed presence tracking');
+      });
+
+      this.redisClient.on('error', (err) => {
+        this.isRedisAvailable = false;
+        this.logger.warn(
+          `Redis presence client error: ${err.message}. Operating with in-memory presence fallback.`,
+        );
+      });
+
+      this.redisClient.connect().catch(() => {
+        this.isRedisAvailable = false;
+      });
+    } catch {
+      this.isRedisAvailable = false;
+    }
+  }
+
+  async onModuleDestroy() {
+    if (this.redisClient) {
+      await this.redisClient.quit().catch(() => {});
+    }
+  }
 
   setServer(server: Server) {
     this.server = server;
   }
 
-  // Register online user connection
-  registerConnection(
+  // Register online user connection (distributed across cluster via Redis with local fallback)
+  async registerConnection(
     userId: string,
     socketId: string,
-  ): { isFirstConnection: boolean } {
+  ): Promise<{ isFirstConnection: boolean }> {
     let socketSet = this.onlineUsers.get(userId);
-    let isFirstConnection = false;
+    let isFirstLocal = false;
 
     if (!socketSet) {
       socketSet = new Set<string>();
       this.onlineUsers.set(userId, socketSet);
-      isFirstConnection = true;
+      isFirstLocal = true;
     }
 
     socketSet.add(socketId);
-    return { isFirstConnection };
+
+    if (this.isRedisAvailable && this.redisClient) {
+      try {
+        const countBefore = await this.redisClient.scard(
+          `presence:user:${userId}:sockets`,
+        );
+        await this.redisClient.sadd(
+          `presence:user:${userId}:sockets`,
+          socketId,
+        );
+        await this.redisClient.sadd('presence:users', userId);
+        await this.redisClient.expire(`presence:user:${userId}:sockets`, 86400);
+        return { isFirstConnection: countBefore === 0 };
+      } catch (err: unknown) {
+        const msg = err instanceof Error ? err.message : String(err);
+        this.logger.warn(`Redis error in registerConnection: ${msg}`);
+      }
+    }
+
+    return { isFirstConnection: isFirstLocal };
   }
 
-  // Unregister user connection
-  unregisterConnection(
+  // Unregister user connection (distributed across cluster via Redis with local fallback)
+  async unregisterConnection(
     userId: string,
     socketId: string,
-  ): { isLastConnection: boolean } {
+  ): Promise<{ isLastConnection: boolean }> {
     const socketSet = this.onlineUsers.get(userId);
-    let isLastConnection = false;
+    let isLastLocal = false;
 
     if (socketSet) {
       socketSet.delete(socketId);
       if (socketSet.size === 0) {
         this.onlineUsers.delete(userId);
-        isLastConnection = true;
+        isLastLocal = true;
       }
     }
 
-    return { isLastConnection };
+    if (this.isRedisAvailable && this.redisClient) {
+      try {
+        await this.redisClient.srem(
+          `presence:user:${userId}:sockets`,
+          socketId,
+        );
+        const countAfter = await this.redisClient.scard(
+          `presence:user:${userId}:sockets`,
+        );
+        if (countAfter === 0) {
+          await this.redisClient.srem('presence:users', userId);
+          return { isLastConnection: true };
+        }
+        return { isLastConnection: false };
+      } catch (err: unknown) {
+        const msg = err instanceof Error ? err.message : String(err);
+        this.logger.warn(`Redis error in unregisterConnection: ${msg}`);
+      }
+    }
+
+    return { isLastConnection: isLastLocal };
   }
 
   // Check if user is online
-  isUserOnline(userId: string): boolean {
+  async isUserOnline(userId: string): Promise<boolean> {
+    if (this.isRedisAvailable && this.redisClient) {
+      try {
+        const isMember = await this.redisClient.sismember(
+          'presence:users',
+          userId,
+        );
+        return isMember === 1;
+      } catch {
+        return this.onlineUsers.has(userId);
+      }
+    }
     return this.onlineUsers.has(userId);
   }
 
@@ -68,6 +171,25 @@ export class RealtimeService {
     });
 
     const memberIds = members.map((m) => m.userId);
+
+    if (this.isRedisAvailable && this.redisClient) {
+      try {
+        const onlineList: string[] = [];
+        for (const id of memberIds) {
+          const isOnline = await this.redisClient.sismember(
+            'presence:users',
+            id,
+          );
+          if (isOnline === 1) {
+            onlineList.push(id);
+          }
+        }
+        return onlineList;
+      } catch {
+        return memberIds.filter((id) => this.onlineUsers.has(id));
+      }
+    }
+
     return memberIds.filter((id) => this.onlineUsers.has(id));
   }
 
@@ -217,6 +339,23 @@ export class RealtimeService {
       `[Realtime Event] comment.deleted on task ${payload.taskId}`,
     );
     this.server.to(`task:${payload.taskId}`).emit('comment:deleted', payload);
+  }
+
+  @OnEvent('comment.reaction_updated')
+  handleCommentReactionUpdated(payload: {
+    commentId: string;
+    taskId: string;
+    action: 'added' | 'removed';
+    emoji: string;
+    actorId: string;
+    actorName: string;
+    reactions: any[];
+  }) {
+    if (!this.server) return;
+    this.logger.log(
+      `[Realtime Event] comment.reaction_updated on task ${payload.taskId} comment ${payload.commentId}`,
+    );
+    this.server.to(`task:${payload.taskId}`).emit('comment:reaction', payload);
   }
 
   @OnEvent('notification.created')

@@ -43,6 +43,7 @@ model User {
   verificationTokens       VerificationToken[]
   sentWorkspaceInvitations WorkspaceInvitation[] @relation("SentWorkspaceInvitations")
   oauthAccounts            OAuthAccount[]
+  commentReactions         CommentReaction[]
 }
 
 model VerificationToken {
@@ -363,10 +364,26 @@ model Comment {
 
   task Task @relation(fields: [taskId], references: [id], onDelete: Cascade)
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  reactions CommentReaction[]
 
   @@index([taskId])
   @@index([userId])
   @@index([taskId, deletedAt, createdAt])
+}
+
+model CommentReaction {
+  id        String   @id @default(uuid())
+  commentId String
+  userId    String
+  emoji     String
+  createdAt DateTime @default(now())
+
+  comment Comment @relation(fields: [commentId], references: [id], onDelete: Cascade)
+  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([commentId, userId, emoji])
+  @@index([commentId])
+  @@index([userId])
 }
 
 model Attachment {
