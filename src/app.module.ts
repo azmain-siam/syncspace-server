@@ -34,6 +34,7 @@ import { QueueModule } from './module/queue/queue.module';
 import { RealtimeModule } from './module/realtime/realtime.module';
 import { SearchModule } from './module/search/search.module';
 import { TrashModule } from './module/trash/trash.module';
+import { HealthModule } from './module/health/health.module';
 
 @Module({
   imports: [
@@ -85,6 +86,7 @@ import { TrashModule } from './module/trash/trash.module';
     TrashModule,
     SearchModule,
     DashboardModule,
+    HealthModule,
   ],
   providers: [
     { provide: APP_INTERCEPTOR, useClass: ResponseInterceptor },

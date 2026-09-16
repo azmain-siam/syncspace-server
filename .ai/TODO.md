@@ -27,15 +27,15 @@ Legend:
 
 ## Infrastructure
 
-- [ ] Docker
-- [ ] Docker Compose
+- [x] Docker (Multi-stage production Dockerfile & .dockerignore)
+- [x] Docker Compose (PostgreSQL 15 & Redis 7 with auth)
 - [x] Environment Configuration
 - [x] Prisma
 - [x] PostgreSQL
 - [x] Swagger
 - [x] Validation Pipe
 - [x] Global Exception Filter
-- [ ] Logger (pino installed but commented out, `console.log` in `main.ts` — 🔄)
+- [x] Logger (Pino / Nest Logger with structured contextual logs)
 - [x] Config Module
 
 ---
@@ -71,18 +71,19 @@ Legend:
 
 - [x] Create Workspace
 - [x] Update Workspace Settings
-- [ ] Delete Workspace
+- [x] Delete Workspace (Soft-delete by Owner: `DELETE /workspaces/:workspaceId`)
+- [x] Leave Workspace (Voluntary exit for non-owners: `POST /workspaces/:workspaceId/leave`)
 - [x] Transfer Ownership
 - [x] Workspace Settings (`PATCH /workspaces/:workspaceId/settings`)
 
 ## Workspace Members
 
 - [x] Invite Member (Direct creation)
-- [ ] Accept Invitation (Token-based flow)
-- [ ] Reject Invitation
+- [x] Accept Invitation (Token-based flow)
+- [x] Reject Invitation
 - [x] Remove Member
 - [x] Change Role
-- [ ] Get User Workspaces (Includes membership workspaces — 🔄 currently only returns owned)
+- [x] Get User Workspaces (Includes membership workspaces)
 
 ---
 
@@ -298,24 +299,12 @@ Legend:
     - [x] Wire Domain Real-Time Events: Emitted `task.created` in `TaskService.createTask`, `task.updated` in `TaskService.updateTask`, `task.deleted` in `TaskService.deleteTask`, and `notification.created` in `NotificationService` (upon task assignment, comment mention, and workspace invitation).
     - [x] Global Search by Task Key: Included `{ key: { contains: searchTerm, mode: 'insensitive' } }` and selected `key` in `SearchService.searchWorkspace`.
     - [x] Added Unit Test Suites: Created `notification.service.spec.ts` (7 tests) and expanded `task.service.spec.ts` (3 new tests for domain event emission).
-
----
-
-# Next Phase: Phase 5 — MVP Hardening, Real-Time Wiring & Cloud Production Readiness
-
-```text
-Current Sprint: Phase 5 (Subphase 5B: Lifecycle Governance & Cloud Readiness)
-
-Subphase 5B: Lifecycle Governance & Cloud Readiness
-1. Cloud Health Probe Endpoint:
-   - Implement HealthModule with GET /health (uptime, status, db ping) excluded from /api/v1
-2. Workspace Lifecycle & Departure:
-   - Implement DELETE /workspaces/:workspaceId (soft-delete by Owner)
-   - Implement POST /workspaces/:workspaceId/leave (voluntary exit for non-owners)
-3. Docker & Container Orchestration:
-   - Align Redis password in docker-compose.yml (--requirepass password)
-   - Add production multi-stage Dockerfile
-```
+29. [x] **Production Audit — Phase 5 (Subphase 5B: Lifecycle Governance & Cloud Readiness)**:
+    - [x] Cloud Health Probe Endpoint: `HealthModule` with `GET /health` (uptime, db connectivity, memory, timestamp) exempt from global `/api/v1` prefix.
+    - [x] Workspace Lifecycle & Voluntary Departure: `DELETE /workspaces/:workspaceId` (soft-delete workspace by Owner) and `POST /workspaces/:workspaceId/leave` (voluntary departure for non-owners with owner exit rejection guardrail).
+    - [x] Activity & Audit Trail Integration: Added `WORKSPACE_DELETED` and `MEMBER_LEFT` / `WORKSPACE_LEFT` logging.
+    - [x] Docker & Compose Infrastructure: Configured Redis authentication with password in `docker-compose.yml`, created multi-stage production `Dockerfile` and `.dockerignore`.
+    - [x] Unit Test Suites: Added `health.service.spec.ts` (2 tests) and `workspace.service.spec.ts` (8 tests) bringing total suite to 88 passing unit tests.
 
 ---
 

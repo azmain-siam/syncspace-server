@@ -332,7 +332,7 @@ Legend:
 
 ---
 
-#### Phase 5: MVP Hardening, Real-Time Wiring & Cloud Production Readiness (Status: ⏳ Planned Next)
+#### Phase 5: MVP Hardening, Real-Time Wiring & Cloud Production Readiness (Status: ✅ Completed)
 
 > **Lead Architect Note:** Before introducing post-MVP complexity (such as dependency DAGs and multi-assignee schemas), this phase addresses the 5 critical "last-mile" gaps identified in the architectural audit to ensure the core MVP is 100% interconnected, cloud-deployable, and glitch-free.
 
@@ -345,16 +345,16 @@ Legend:
 - [x] **23. Human Task Key Global Search:**
   - Add `{ key: { contains: searchTerm, mode: 'insensitive' } }` to `SearchService.searchWorkspace` so engineers can search directly by `GEN-1` or `SYNC-101`.
 
-##### Subphase 5B: Lifecycle Governance & Cloud Readiness (Status: ⏳ Planned)
-- [ ] **24. Cloud Health Probe Endpoint (`GET /health`):**
+##### Subphase 5B: Lifecycle Governance & Cloud Readiness (Status: ✅ Completed)
+- [x] **24. Cloud Health Probe Endpoint (`GET /health`):**
   - Implement a dedicated `HealthModule` excluded from global `/api/v1` prefix.
   - Return `{ status: 'ok', uptime, timestamp, database: 'connected' }` to satisfy Kubernetes, AWS ECS, Render, and GCP Cloud Run liveness/readiness probes.
-- [ ] **25. Workspace Lifecycle & Voluntary Exit:**
+- [x] **25. Workspace Lifecycle & Voluntary Exit:**
   - Implement `DELETE /workspaces/:workspaceId` (soft-delete workspace by Owner).
-  - Implement `POST /workspaces/:workspaceId/leave` (allow non-owner members and guests to depart a workspace cleanly).
-- [ ] **26. Container Orchestration & Docker Alignment:**
-  - Update `docker-compose.yml` Redis service with `--requirepass ${REDIS_PASSWORD:-password}` to eliminate client connection auth crashes.
-  - Add production multi-stage `Dockerfile` (build, prune, dist run) for one-command local and cloud containerization.
+  - Implement `POST /workspaces/:workspaceId/leave` (allow non-owner members and guests to depart a workspace cleanly with owner departure guardrail).
+- [x] **26. Container Orchestration & Docker Alignment:**
+  - Update `docker-compose.yml` Redis service with `--requirepass password` to eliminate client connection auth mismatches.
+  - Add production multi-stage `Dockerfile` (builder, runner with non-root user) and `.dockerignore` for one-command containerization.
 
 ---
 
