@@ -1,11 +1,14 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { TaskPriority, TaskStatus } from '@prisma/client';
 import {
+  IsBoolean,
   IsDateString,
   IsEnum,
   IsInt,
+  IsNumber,
   IsOptional,
   IsString,
+  IsUUID,
   Length,
   MaxLength,
   Min,
@@ -48,4 +51,35 @@ export class CreateTaskDto {
   @IsInt()
   @Min(0)
   order?: number;
+
+  @ApiPropertyOptional({
+    example: 5,
+    description: 'Story points estimation (0-100)',
+  })
+  @IsOptional()
+  @IsInt()
+  @Min(0)
+  storyPoints?: number;
+
+  @ApiPropertyOptional({
+    example: 4.5,
+    description: 'Estimated hours to complete',
+  })
+  @IsOptional()
+  @IsNumber()
+  @Min(0)
+  estimatedHours?: number;
+
+  @ApiPropertyOptional({
+    example: false,
+    description: 'Whether task is in backlog',
+  })
+  @IsOptional()
+  @IsBoolean()
+  isBacklog?: boolean;
+
+  @ApiPropertyOptional({ example: 'sprint-uuid', description: 'Sprint UUID' })
+  @IsOptional()
+  @IsUUID('4')
+  sprintId?: string;
 }

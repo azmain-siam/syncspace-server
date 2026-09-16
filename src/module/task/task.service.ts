@@ -18,6 +18,8 @@ import { generateProjectKey } from 'src/common/utils/slug.util';
 import { ActivityService } from '../activity/activity.service';
 import { ActivityAction } from '../activity/enums/activity-action.enum';
 import { PrismaService } from '../prisma/prisma.service';
+import { BulkDeleteTasksDto } from './dto/bulk-delete-tasks.dto';
+import { BulkUpdateTasksDto } from './dto/bulk-update-tasks.dto';
 import { CreateTaskDto } from './dto/create-task.dto';
 import { MoveTaskDto } from './dto/move-task.dto';
 import { MyTasksQueryDto } from './dto/my-tasks-query.dto';
@@ -91,6 +93,10 @@ export class TaskService {
           assigneeId: dto.assigneeId,
           dueDate: dto.dueDate ? new Date(dto.dueDate) : null,
           order: targetOrder,
+          storyPoints: dto.storyPoints,
+          estimatedHours: dto.estimatedHours,
+          isBacklog: dto.isBacklog ?? false,
+          sprintId: dto.sprintId,
         },
         include: {
           assignee: { select: SAFE_USER_MINIMAL_SELECT },
@@ -463,6 +469,20 @@ export class TaskService {
           status: dto.status ?? existingTask.status,
           assigneeId: dto.assigneeId ?? existingTask.assigneeId,
           dueDate: dto.dueDate ? new Date(dto.dueDate) : existingTask.dueDate,
+          storyPoints:
+            dto.storyPoints !== undefined
+              ? dto.storyPoints
+              : existingTask.storyPoints,
+          estimatedHours:
+            dto.estimatedHours !== undefined
+              ? dto.estimatedHours
+              : existingTask.estimatedHours,
+          isBacklog:
+            dto.isBacklog !== undefined
+              ? dto.isBacklog
+              : existingTask.isBacklog,
+          sprintId:
+            dto.sprintId !== undefined ? dto.sprintId : existingTask.sprintId,
         },
         include: {
           assignee: { select: SAFE_USER_MINIMAL_SELECT },
@@ -698,5 +718,281 @@ export class TaskService {
 
       return null;
     });
+  }
+
+  // Bulk update tasks
+  async bulkUpdateTasks(dto: BulkUpdateTasksDto, currentUser: User) {
+    const tasks = await this.prisma.task.findMany({
+      where: { id: { in: dto.taskIds }, deletedAt: null },
+      include: {
+        column: {
+          include: {
+            board: {
+              include: {
+                project: true,
+              },
+            },
+          },
+        },
+      },
+    });
+
+    if (tasks.length === 0) {
+      throw new NotFoundException('No matching active tasks found');
+    }
+
+    if (tasks.length !== dto.taskIds.length) {
+      const foundIds = new Set(tasks.map((t) => t.id));
+      const missingIds = dto.taskIds.filter((id) => !foundIds.has(id));
+      throw new NotFoundException(`Tasks not found: ${missingIds.join(', ')}`);
+    }
+
+    // Verify workspace membership and permissions across all involved workspaces
+    const workspaceIds = [
+      ...new Set(tasks.map((t) => t.column.board.project.workspaceId)),
+    ];
+    const memberships = await this.prisma.workspaceMember.findMany({
+      where: {
+        workspaceId: { in: workspaceIds },
+        userId: currentUser.id,
+      },
+    });
+
+    if (memberships.length !== workspaceIds.length) {
+      throw new ForbiddenException(
+        'You do not have access to all workspaces of the selected tasks',
+      );
+    }
+
+    const hasGuest = memberships.some((m) => m.role === WorkspaceRole.GUEST);
+    if (hasGuest) {
+      throw new ForbiddenException('Guest members cannot bulk-update tasks');
+    }
+
+    // If assigneeId is provided, verify it in each workspace
+    if (dto.data.assigneeId) {
+      for (const wId of workspaceIds) {
+        await this.entityValidationService.verifyAssignee(
+          wId,
+          dto.data.assigneeId,
+        );
+      }
+    }
+
+    // If sprintId is provided, verify sprint exists and belongs to the project
+    if (dto.data.sprintId) {
+      const sprint = await this.prisma.sprint.findUnique({
+        where: { id: dto.data.sprintId, deletedAt: null },
+      });
+      if (!sprint) {
+        throw new NotFoundException('Sprint not found');
+      }
+      const invalidProjectTask = tasks.find(
+        (t) => t.column.board.project.id !== sprint.projectId,
+      );
+      if (invalidProjectTask) {
+        throw new ForbiddenException(
+          'Cannot assign tasks to a sprint from a different project',
+        );
+      }
+    }
+
+    // If columnId is provided, verify column exists and matches project
+    if (dto.data.columnId) {
+      const column = await this.entityValidationService.verifyColumnById(
+        dto.data.columnId,
+      );
+      const colWorkspaceId = column.board.project.workspaceId;
+      const mismatchedTask = tasks.find(
+        (t) => t.column.board.project.workspaceId !== colWorkspaceId,
+      );
+      if (mismatchedTask) {
+        throw new ForbiddenException(
+          'Cannot move tasks to a column in a different workspace',
+        );
+      }
+    }
+
+    // If labelIds are provided, verify labels exist
+    if (dto.data.labelIds && dto.data.labelIds.length > 0) {
+      const labels = await this.prisma.taskLabel.findMany({
+        where: { id: { in: dto.data.labelIds } },
+      });
+      if (labels.length !== dto.data.labelIds.length) {
+        throw new NotFoundException('One or more task labels not found');
+      }
+    }
+
+    const result = await this.prisma.$transaction(async (tx) => {
+      const updateData: Prisma.TaskUpdateInput = {};
+
+      if (dto.data.status !== undefined) updateData.status = dto.data.status;
+      if (dto.data.priority !== undefined)
+        updateData.priority = dto.data.priority;
+      if (dto.data.assigneeId !== undefined) {
+        updateData.assignee = dto.data.assigneeId
+          ? { connect: { id: dto.data.assigneeId } }
+          : { disconnect: true };
+      }
+      if (dto.data.sprintId !== undefined) {
+        updateData.sprint = dto.data.sprintId
+          ? { connect: { id: dto.data.sprintId } }
+          : { disconnect: true };
+      }
+      if (dto.data.columnId !== undefined) {
+        updateData.column = { connect: { id: dto.data.columnId } };
+      }
+      if (dto.data.isBacklog !== undefined)
+        updateData.isBacklog = dto.data.isBacklog;
+      if (dto.data.storyPoints !== undefined)
+        updateData.storyPoints = dto.data.storyPoints;
+      if (dto.data.estimatedHours !== undefined)
+        updateData.estimatedHours = dto.data.estimatedHours;
+      if (dto.data.labelIds !== undefined) {
+        updateData.labels = {
+          set: dto.data.labelIds.map((id) => ({ id })),
+        };
+      }
+
+      const updatedTasks = await Promise.all(
+        dto.taskIds.map((taskId) =>
+          tx.task.update({
+            where: { id: taskId },
+            data: updateData,
+            include: {
+              assignee: { select: SAFE_USER_MINIMAL_SELECT },
+              column: { select: { id: true, title: true, boardId: true } },
+              labels: true,
+              sprint: { select: { id: true, name: true, status: true } },
+            },
+          }),
+        ),
+      );
+
+      // Create activity logs per workspace
+      for (const wId of workspaceIds) {
+        const workspaceTasks = updatedTasks.filter((t) => {
+          const original = tasks.find((ot) => ot.id === t.id);
+          return original?.column.board.project.workspaceId === wId;
+        });
+
+        await this.activityService.createActivityLog(tx, {
+          workspaceId: wId,
+          actorId: currentUser.id,
+          action: ActivityAction.TASKS_BULK_UPDATED,
+          description: `${currentUser.name} bulk-updated ${workspaceTasks.length} tasks`,
+          metadata: {
+            taskIds: workspaceTasks.map((t) => t.id),
+            changes: JSON.parse(
+              JSON.stringify(dto.data),
+            ) as Prisma.InputJsonValue,
+          },
+        });
+      }
+
+      return {
+        updatedCount: updatedTasks.length,
+        tasks: updatedTasks,
+      };
+    });
+
+    this.eventEmitter.emit('tasks.bulk_updated', {
+      taskIds: dto.taskIds,
+      actorId: currentUser.id,
+      changes: dto.data,
+    });
+
+    return result;
+  }
+
+  // Bulk delete (soft-delete) tasks
+  async bulkDeleteTasks(dto: BulkDeleteTasksDto, currentUser: User) {
+    const tasks = await this.prisma.task.findMany({
+      where: { id: { in: dto.taskIds }, deletedAt: null },
+      include: {
+        column: {
+          include: {
+            board: {
+              include: {
+                project: true,
+              },
+            },
+          },
+        },
+      },
+    });
+
+    if (tasks.length === 0) {
+      throw new NotFoundException('No matching active tasks found');
+    }
+
+    if (tasks.length !== dto.taskIds.length) {
+      const foundIds = new Set(tasks.map((t) => t.id));
+      const missingIds = dto.taskIds.filter((id) => !foundIds.has(id));
+      throw new NotFoundException(`Tasks not found: ${missingIds.join(', ')}`);
+    }
+
+    const workspaceIds = [
+      ...new Set(tasks.map((t) => t.column.board.project.workspaceId)),
+    ];
+    const memberships = await this.prisma.workspaceMember.findMany({
+      where: {
+        workspaceId: { in: workspaceIds },
+        userId: currentUser.id,
+      },
+    });
+
+    const membershipMap = new Map(
+      memberships.map((m) => [m.workspaceId, m.role]),
+    );
+
+    // Enforce deletion permission for every task: must be OWNER/ADMIN or creator
+    for (const task of tasks) {
+      const userRole = membershipMap.get(task.column.board.project.workspaceId);
+      const isPrivileged =
+        userRole === WorkspaceRole.OWNER || userRole === WorkspaceRole.ADMIN;
+      const isCreator = task.createdBy === currentUser.id;
+
+      if (!isPrivileged && !isCreator) {
+        throw new ForbiddenException(
+          `You do not have permission to delete task "${task.title}"`,
+        );
+      }
+    }
+
+    const result = await this.prisma.$transaction(async (tx) => {
+      const now = new Date();
+      await tx.task.updateMany({
+        where: { id: { in: dto.taskIds } },
+        data: { deletedAt: now },
+      });
+
+      for (const wId of workspaceIds) {
+        const workspaceTasks = tasks.filter(
+          (t) => t.column.board.project.workspaceId === wId,
+        );
+        await this.activityService.createActivityLog(tx, {
+          workspaceId: wId,
+          actorId: currentUser.id,
+          action: ActivityAction.TASKS_BULK_DELETED,
+          description: `${currentUser.name} bulk-deleted ${workspaceTasks.length} tasks`,
+          metadata: {
+            taskIds: workspaceTasks.map((t) => t.id),
+          },
+        });
+      }
+
+      return {
+        deletedCount: tasks.length,
+        taskIds: dto.taskIds,
+      };
+    });
+
+    this.eventEmitter.emit('tasks.bulk_deleted', {
+      taskIds: dto.taskIds,
+      actorId: currentUser.id,
+    });
+
+    return result;
   }
 }
