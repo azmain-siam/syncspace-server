@@ -71,6 +71,7 @@ export class SearchService {
             },
           },
           OR: [
+            { key: { contains: searchTerm, mode: 'insensitive' } },
             { title: { contains: searchTerm, mode: 'insensitive' } },
             { description: { contains: searchTerm, mode: 'insensitive' } },
           ],
@@ -79,6 +80,7 @@ export class SearchService {
         orderBy: { updatedAt: 'desc' },
         select: {
           id: true,
+          key: true,
           title: true,
           description: true,
           status: true,

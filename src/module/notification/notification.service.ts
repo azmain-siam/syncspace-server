@@ -1,5 +1,5 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
-import { OnEvent } from '@nestjs/event-emitter';
+import { EventEmitter2, OnEvent } from '@nestjs/event-emitter';
 import { NotificationType, Prisma } from '@prisma/client';
 import { calculatePaginationMeta } from 'src/common/utils/pagination.util';
 import { PrismaService } from '../prisma/prisma.service';
@@ -12,7 +12,10 @@ import {
 
 @Injectable()
 export class NotificationService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly eventEmitter: EventEmitter2,
+  ) {}
 
   // EVENT LISTENERS
 
@@ -21,7 +24,7 @@ export class NotificationService {
   async handleTaskAssigned(event: TaskAssignedEvent) {
     if (event.assigneeId === event.actorId) return; // Don't notify self
 
-    await this.prisma.notification.create({
+    const notification = await this.prisma.notification.create({
       data: {
         userId: event.assigneeId,
         actorId: event.actorId,
@@ -30,6 +33,21 @@ export class NotificationService {
         message: `${event.actorName} assigned you to task "${event.title}"`,
         link: `/tasks/${event.taskId}`,
       },
+      include: {
+        actor: {
+          select: {
+            id: true,
+            name: true,
+            email: true,
+            avatar: true,
+          },
+        },
+      },
+    });
+
+    this.eventEmitter.emit('notification.created', {
+      notification,
+      userId: event.assigneeId,
     });
   }
 
@@ -38,7 +56,7 @@ export class NotificationService {
   async handleCommentMention(event: CommentMentionEvent) {
     if (event.mentionedUserId === event.actorId) return; // Don't notify self
 
-    await this.prisma.notification.create({
+    const notification = await this.prisma.notification.create({
       data: {
         userId: event.mentionedUserId,
         actorId: event.actorId,
@@ -47,6 +65,21 @@ export class NotificationService {
         message: `${event.actorName} mentioned you in task "${event.taskTitle}"`,
         link: `/tasks/${event.taskId}`,
       },
+      include: {
+        actor: {
+          select: {
+            id: true,
+            name: true,
+            email: true,
+            avatar: true,
+          },
+        },
+      },
+    });
+
+    this.eventEmitter.emit('notification.created', {
+      notification,
+      userId: event.mentionedUserId,
     });
   }
 
@@ -55,7 +88,7 @@ export class NotificationService {
   async handleWorkspaceInvitation(event: WorkspaceInvitationEvent) {
     if (event.invitedUserId === event.actorId) return; // Don't notify self
 
-    await this.prisma.notification.create({
+    const notification = await this.prisma.notification.create({
       data: {
         userId: event.invitedUserId,
         actorId: event.actorId,
@@ -64,6 +97,21 @@ export class NotificationService {
         message: `${event.actorName} invited you to join workspace "${event.workspaceName}"`,
         link: `/workspaces/${event.workspaceId}`,
       },
+      include: {
+        actor: {
+          select: {
+            id: true,
+            name: true,
+            email: true,
+            avatar: true,
+          },
+        },
+      },
+    });
+
+    this.eventEmitter.emit('notification.created', {
+      notification,
+      userId: event.invitedUserId,
     });
   }
 

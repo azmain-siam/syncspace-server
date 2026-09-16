@@ -151,4 +151,34 @@ export class WorkspaceController {
       user,
     );
   }
+
+  // Soft-delete workspace
+  @Delete(':workspaceId')
+  @UseGuards(JwtAuthGuard, WorkspaceRoleGuard)
+  @WorkspaceRoles(WorkspaceRole.OWNER)
+  @ResponseMessage('Workspace deleted successfully')
+  @ApiOperation({ summary: 'Delete workspace by workspace owner' })
+  deleteWorkspace(
+    @Param('workspaceId') workspaceId: string,
+    @CurrentUser() user: User,
+  ) {
+    return this.workspaceService.deleteWorkspace(workspaceId, user);
+  }
+
+  // Leave workspace voluntarily
+  @Post(':workspaceId/leave')
+  @UseGuards(JwtAuthGuard, WorkspaceRoleGuard)
+  @WorkspaceRoles(
+    WorkspaceRole.ADMIN,
+    WorkspaceRole.MEMBER,
+    WorkspaceRole.GUEST,
+  )
+  @ResponseMessage('Left workspace successfully')
+  @ApiOperation({ summary: 'Leave workspace voluntarily' })
+  leaveWorkspace(
+    @Param('workspaceId') workspaceId: string,
+    @CurrentUser() user: User,
+  ) {
+    return this.workspaceService.leaveWorkspace(workspaceId, user);
+  }
 }

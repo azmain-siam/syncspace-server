@@ -51,7 +51,7 @@ export class TaskService {
       );
     }
 
-    return this.prisma.$transaction(async (tx) => {
+    const task = await this.prisma.$transaction(async (tx) => {
       let targetOrder = dto.order;
 
       if (targetOrder === undefined || targetOrder === null) {
@@ -160,6 +160,14 @@ export class TaskService {
 
       return task;
     });
+
+    this.eventEmitter.emit('task.created', {
+      task,
+      boardId,
+      workspaceId,
+    });
+
+    return task;
   }
 
   // Get Column Tasks (Paginated & Filtered)
@@ -459,7 +467,7 @@ export class TaskService {
       );
     }
 
-    return this.prisma.$transaction(async (tx) => {
+    const updatedTask = await this.prisma.$transaction(async (tx) => {
       const updatedTask = await tx.task.update({
         where: { id: taskId },
         data: {
@@ -536,6 +544,15 @@ export class TaskService {
 
       return updatedTask;
     });
+
+    this.eventEmitter.emit('task.updated', {
+      task: updatedTask,
+      boardId,
+      taskId: updatedTask.id,
+      workspaceId,
+    });
+
+    return updatedTask;
   }
 
   // Move Task across columns or reorder
@@ -699,7 +716,7 @@ export class TaskService {
       );
     }
 
-    return this.prisma.$transaction(async (tx) => {
+    await this.prisma.$transaction(async (tx) => {
       await tx.task.update({
         where: { id: taskId },
         data: { deletedAt: new Date() },
@@ -718,6 +735,14 @@ export class TaskService {
 
       return null;
     });
+
+    this.eventEmitter.emit('task.deleted', {
+      taskId,
+      boardId,
+      workspaceId,
+    });
+
+    return null;
   }
 
   // Bulk update tasks

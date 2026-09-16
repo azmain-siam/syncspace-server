@@ -16,6 +16,8 @@ import { User } from 'src/common/interfaces/user.interface';
 import { generateUniqueSlug } from 'src/common/utils/slug.util';
 import { ActivityService } from '../activity/activity.service';
 import { ActivityAction } from '../activity/enums/activity-action.enum';
+import { AuditLogService } from '../audit/audit-log.service';
+import { AuditAction } from '../audit/enums/audit-action.enum';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateWorkspaceDto } from './dto/create-workspace.dto';
 import { InviteMemberDto } from './dto/invite-member.dto';
@@ -28,6 +30,7 @@ export class WorkspaceService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly activityService: ActivityService,
+    private readonly auditLogService: AuditLogService,
   ) {}
 
   // Create workspace
@@ -443,5 +446,113 @@ export class WorkspaceService {
 
       return updatedWorkspace;
     });
+  }
+
+  // Soft-delete workspace (Owner only)
+  async deleteWorkspace(workspaceId: string, user: User) {
+    const workspace = await this.prisma.workspace.findFirst({
+      where: {
+        id: workspaceId,
+        deletedAt: null,
+      },
+    });
+
+    if (!workspace) {
+      throw new NotFoundException('Workspace not found');
+    }
+
+    if (workspace.ownerId !== user.id) {
+      throw new ForbiddenException(
+        'Only the workspace owner can delete this workspace',
+      );
+    }
+
+    await this.prisma.$transaction(async (tx) => {
+      await tx.workspace.update({
+        where: { id: workspaceId },
+        data: { deletedAt: new Date() },
+      });
+
+      await this.activityService.createActivityLog(tx, {
+        workspaceId,
+        actorId: user.id,
+        action: ActivityAction.WORKSPACE_DELETED,
+        description: `${user.name} deleted workspace ${workspace.name}`,
+        metadata: {
+          workspaceId,
+          workspaceName: workspace.name,
+        },
+      });
+    });
+
+    await this.auditLogService.log({
+      workspaceId,
+      actorId: user.id,
+      action: AuditAction.WORKSPACE_DELETED,
+      metadata: {
+        workspaceId,
+        workspaceName: workspace.name,
+      },
+    });
+
+    return null;
+  }
+
+  // Leave workspace voluntarily (Non-owners only)
+  async leaveWorkspace(workspaceId: string, user: User) {
+    const member = await this.prisma.workspaceMember.findUnique({
+      where: {
+        workspaceId_userId: {
+          workspaceId,
+          userId: user.id,
+        },
+      },
+    });
+
+    if (!member) {
+      throw new NotFoundException('You are not a member of this workspace');
+    }
+
+    if (member.role === WorkspaceRole.OWNER) {
+      throw new BadRequestException(
+        'Workspace owner cannot leave the workspace. Transfer ownership first.',
+      );
+    }
+
+    await this.prisma.$transaction(async (tx) => {
+      await tx.workspaceMember.delete({
+        where: {
+          workspaceId_userId: {
+            workspaceId,
+            userId: user.id,
+          },
+        },
+      });
+
+      await this.activityService.createActivityLog(tx, {
+        workspaceId,
+        actorId: user.id,
+        action: ActivityAction.MEMBER_LEFT,
+        description: `${user.name} left the workspace`,
+        metadata: {
+          workspaceId,
+          userId: user.id,
+          userName: user.name,
+        },
+      });
+    });
+
+    await this.auditLogService.log({
+      workspaceId,
+      actorId: user.id,
+      action: AuditAction.WORKSPACE_LEFT,
+      metadata: {
+        workspaceId,
+        userId: user.id,
+        userName: user.name,
+      },
+    });
+
+    return null;
   }
 }

@@ -195,4 +195,111 @@ describe('TaskService - Bulk Operations', () => {
       ).rejects.toThrow(ForbiddenException);
     });
   });
+
+  describe('createTask event emission', () => {
+    it('should emit task.created domain event after task creation', async () => {
+      entityValidationService.verifyColumnById.mockResolvedValue({
+        id: 'col-1',
+        board: {
+          id: 'board-1',
+          project: {
+            id: 'proj-1',
+            workspaceId: 'ws-1',
+            key: 'GEN',
+            taskCounter: 1,
+          },
+        },
+      });
+
+      prisma.task.findFirst = jest.fn().mockResolvedValue(null);
+      prisma.project = {
+        update: jest.fn().mockResolvedValue({ key: 'GEN', taskCounter: 2 }),
+      };
+      prisma.task.create = jest.fn().mockResolvedValue({
+        id: 'task-1',
+        key: 'GEN-2',
+        title: 'New Task',
+        order: 0,
+        columnId: 'col-1',
+      });
+
+      const result = await service.createTask(
+        'col-1',
+        { title: 'New Task' } as any,
+        mockUser,
+      );
+
+      expect(result.id).toBe('task-1');
+      expect(eventEmitter.emit).toHaveBeenCalledWith('task.created', {
+        task: expect.objectContaining({ id: 'task-1' }),
+        boardId: 'board-1',
+        workspaceId: 'ws-1',
+      });
+    });
+  });
+
+  describe('updateTask event emission', () => {
+    it('should emit task.updated domain event after task update', async () => {
+      entityValidationService.verifyTaskById = jest.fn().mockResolvedValue({
+        id: 'task-1',
+        title: 'Old Title',
+        columnId: 'col-1',
+        column: {
+          board: {
+            id: 'board-1',
+            project: { id: 'proj-1', workspaceId: 'ws-1' },
+          },
+        },
+      });
+
+      prisma.task.update = jest.fn().mockResolvedValue({
+        id: 'task-1',
+        title: 'Updated Title',
+      });
+
+      const result = await service.updateTask(
+        'task-1',
+        { title: 'Updated Title' } as any,
+        mockUser,
+      );
+
+      expect(result.title).toBe('Updated Title');
+      expect(eventEmitter.emit).toHaveBeenCalledWith('task.updated', {
+        task: expect.objectContaining({ title: 'Updated Title' }),
+        boardId: 'board-1',
+        taskId: 'task-1',
+        workspaceId: 'ws-1',
+      });
+    });
+  });
+
+  describe('deleteTask event emission', () => {
+    it('should emit task.deleted domain event after soft delete', async () => {
+      entityValidationService.verifyTaskById = jest.fn().mockResolvedValue({
+        id: 'task-1',
+        createdBy: 'user-1',
+        title: 'Task 1',
+        column: {
+          board: {
+            id: 'board-1',
+            project: { id: 'proj-1', workspaceId: 'ws-1' },
+          },
+        },
+      });
+
+      prisma.workspaceMember = {
+        ...prisma.workspaceMember,
+        findUnique: jest.fn().mockResolvedValue({ role: WorkspaceRole.MEMBER }),
+      };
+      prisma.task.update = jest.fn().mockResolvedValue({ id: 'task-1' });
+
+      await service.deleteTask('task-1', mockUser);
+
+      expect(eventEmitter.emit).toHaveBeenCalledWith('task.deleted', {
+        taskId: 'task-1',
+        boardId: 'board-1',
+        workspaceId: 'ws-1',
+      });
+    });
+  });
 });
