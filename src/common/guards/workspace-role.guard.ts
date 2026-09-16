@@ -27,7 +27,7 @@ export class WorkspaceRoleGuard implements CanActivate {
 
     const request = context.switchToHttp().getRequest();
     const user = request.user;
-    let workspaceId = request.params.workspaceId;
+    let workspaceId = request.params.workspaceId || request.body?.workspaceId;
 
     if (!workspaceId) {
       if (request.params.taskId) {
@@ -53,6 +53,19 @@ export class WorkspaceRoleGuard implements CanActivate {
           },
         });
         workspaceId = task?.column?.board?.project?.workspaceId;
+        if (workspaceId) {
+          request.params.workspaceId = workspaceId;
+        }
+      } else if (request.params.sprintId) {
+        const sprint = await this.prisma.sprint.findUnique({
+          where: { id: request.params.sprintId },
+          select: {
+            project: {
+              select: { workspaceId: true },
+            },
+          },
+        });
+        workspaceId = sprint?.project?.workspaceId;
         if (workspaceId) {
           request.params.workspaceId = workspaceId;
         }

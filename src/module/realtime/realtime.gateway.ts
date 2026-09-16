@@ -1,4 +1,10 @@
-import { Logger, UseGuards, UsePipes, ValidationPipe } from '@nestjs/common';
+import {
+  Logger,
+  OnModuleDestroy,
+  UseGuards,
+  UsePipes,
+  ValidationPipe,
+} from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { JwtService } from '@nestjs/jwt';
 import {
@@ -12,6 +18,8 @@ import {
   WebSocketServer,
   WsException,
 } from '@nestjs/websockets';
+import { createAdapter } from '@socket.io/redis-adapter';
+import Redis from 'ioredis';
 import { Server } from 'socket.io';
 import { PrismaService } from '../prisma/prisma.service';
 import { JoinRoomDto } from './dto/join-room.dto';
@@ -32,9 +40,15 @@ interface SocketJwtPayload {
   },
 })
 export class RealtimeGateway
-  implements OnGatewayInit, OnGatewayConnection, OnGatewayDisconnect
+  implements
+    OnGatewayInit,
+    OnGatewayConnection,
+    OnGatewayDisconnect,
+    OnModuleDestroy
 {
   private readonly logger = new Logger(RealtimeGateway.name);
+  private pubClient?: Redis;
+  private subClient?: Redis;
 
   @WebSocketServer()
   server!: Server;
@@ -46,11 +60,68 @@ export class RealtimeGateway
     private readonly prisma: PrismaService,
   ) {}
 
-  afterInit(server: Server) {
+  async afterInit(server: Server) {
     this.realtimeService.setServer(server);
+    await this.setupRedisAdapter(server);
     this.logger.log(
       'Socket.IO Realtime Gateway initialized on namespace /realtime',
     );
+  }
+
+  private async setupRedisAdapter(server: Server) {
+    const host = this.configService.get<string>('redis.host', 'localhost');
+    const port = this.configService.get<number>('redis.port', 6379);
+    const password =
+      this.configService.get<string>('redis.password') || undefined;
+
+    try {
+      this.pubClient = new Redis({
+        host,
+        port,
+        password,
+        lazyConnect: true,
+        maxRetriesPerRequest: 1,
+        enableOfflineQueue: false,
+      });
+      this.subClient = this.pubClient.duplicate();
+
+      this.pubClient.on('error', (err) => {
+        this.logger.warn(`Redis pubClient error: ${err.message}`);
+      });
+      this.subClient.on('error', (err) => {
+        this.logger.warn(`Redis subClient error: ${err.message}`);
+      });
+
+      await Promise.all([this.pubClient.connect(), this.subClient.connect()]);
+
+      // In NestJS, when a gateway specifies a namespace, server is a Namespace instance.
+      // The .adapter(constructor) method lives on the root Server instance (Namespace.server).
+      const rootServer: Server =
+        'server' in server &&
+        Boolean((server as unknown as { server: Server }).server)
+          ? (server as unknown as { server: Server }).server
+          : server;
+
+      rootServer.adapter(createAdapter(this.pubClient, this.subClient));
+
+      this.logger.log(
+        'Socket.IO Redis Adapter successfully attached for distributed presence and room synchronization',
+      );
+    } catch (error: unknown) {
+      const msg = error instanceof Error ? error.message : String(error);
+      this.logger.warn(
+        `Failed to connect Redis Adapter: ${msg}. Operating in standalone in-memory mode.`,
+      );
+    }
+  }
+
+  async onModuleDestroy() {
+    if (this.pubClient) {
+      await this.pubClient.quit().catch(() => {});
+    }
+    if (this.subClient) {
+      await this.subClient.quit().catch(() => {});
+    }
   }
 
   async handleConnection(client: AuthenticatedSocket) {
@@ -98,10 +169,8 @@ export class RealtimeGateway
       await client.join(`user:${user.id}`);
 
       // Presence registration
-      const { isFirstConnection } = this.realtimeService.registerConnection(
-        user.id,
-        client.id,
-      );
+      const { isFirstConnection } =
+        await this.realtimeService.registerConnection(user.id, client.id);
 
       if (isFirstConnection) {
         this.server.emit('user:online', {
@@ -126,14 +195,12 @@ export class RealtimeGateway
     }
   }
 
-  handleDisconnect(client: AuthenticatedSocket) {
+  async handleDisconnect(client: AuthenticatedSocket) {
     const user = client.data?.user;
 
     if (user) {
-      const { isLastConnection } = this.realtimeService.unregisterConnection(
-        user.id,
-        client.id,
-      );
+      const { isLastConnection } =
+        await this.realtimeService.unregisterConnection(user.id, client.id);
 
       if (isLastConnection) {
         this.server.emit('user:offline', {

@@ -285,18 +285,20 @@ Legend:
     - [x] Viewer / Guest Role Implementation (`GUEST` in `WorkspaceRole` enum with read-only and comment-only permissions).
     - [x] Trash Management & Soft-Delete Restore APIs (`TrashModule`, `GET/POST/DELETE /workspaces/:workspaceId/trash`).
     - [x] Security Audit Log Feed API (`AuditLogController`, `GET /workspaces/:workspaceId/audit-logs`).
+26. [x] **Production Audit — Phase 4 (Subphase 4A: Agile Sprints, Backlog Triage, Estimation & Bulk Ops)**:
+    - [x] Sprints / Milestones entity & lifecycle (`Sprint` model, single active sprint rule, start, complete with unfinished task rollover, soft-delete, `/projects/:projectId/sprints`, `/sprints/:sprintId/*`).
+    - [x] Dedicated Project Backlog Triage view (`GET /projects/:projectId/backlog` with capacity metrics aggregation).
+    - [x] Task Effort Estimation (`storyPoints`, `estimatedHours`, `isBacklog`, `sprintId` on `Task` + dashboard capacity analytics).
+    - [x] Task Bulk Operations (`POST /tasks/bulk-update` and `POST /tasks/bulk-delete` with workspace security checks).
 
 ---
 
 # Next Feature (What to do next)
 
 ```
-Current Sprint: Production Audit — Phase 4 (Agile Scale & Real-Time Polish)
-1. Sprints / Milestones & Dedicated Backlog View (Sprint entity and backlog triage support).
-2. Effort Estimation (Story Points & Estimated Hours on Task + dashboard workload analytics).
-3. Task Bulk Operations (POST /tasks/bulk-update and POST /tasks/bulk-delete).
-4. Socket.IO Redis Adapter Presence (Distributed WebSocket scaling).
-5. Comment Emoji Reactions (CommentReaction entity & toggle endpoints).
+Current Sprint: Production Audit — Phase 4 (Subphase 4B: Distributed Real-Time Scale & Interactive Polish)
+1. Socket.IO Redis Adapter Presence (Distributed WebSocket scaling via @socket.io/redis-adapter).
+2. Comment Emoji Reactions (CommentReaction entity & toggle endpoints).
 ```
 
 
