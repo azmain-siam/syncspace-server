@@ -27,15 +27,15 @@ Legend:
 
 ## Infrastructure
 
-- [ ] Docker
-- [ ] Docker Compose
+- [x] Docker (Multi-stage production Dockerfile & .dockerignore)
+- [x] Docker Compose (PostgreSQL 15 & Redis 7 with auth)
 - [x] Environment Configuration
 - [x] Prisma
 - [x] PostgreSQL
 - [x] Swagger
 - [x] Validation Pipe
 - [x] Global Exception Filter
-- [ ] Logger (pino installed but commented out, `console.log` in `main.ts` — 🔄)
+- [x] Logger (Pino / Nest Logger with structured contextual logs)
 - [x] Config Module
 
 ---
@@ -71,18 +71,19 @@ Legend:
 
 - [x] Create Workspace
 - [x] Update Workspace Settings
-- [ ] Delete Workspace
+- [x] Delete Workspace (Soft-delete by Owner: `DELETE /workspaces/:workspaceId`)
+- [x] Leave Workspace (Voluntary exit for non-owners: `POST /workspaces/:workspaceId/leave`)
 - [x] Transfer Ownership
 - [x] Workspace Settings (`PATCH /workspaces/:workspaceId/settings`)
 
 ## Workspace Members
 
 - [x] Invite Member (Direct creation)
-- [ ] Accept Invitation (Token-based flow)
-- [ ] Reject Invitation
+- [x] Accept Invitation (Token-based flow)
+- [x] Reject Invitation
 - [x] Remove Member
 - [x] Change Role
-- [ ] Get User Workspaces (Includes membership workspaces — 🔄 currently only returns owned)
+- [x] Get User Workspaces (Includes membership workspaces)
 
 ---
 
@@ -291,14 +292,29 @@ Legend:
     - [x] Task Effort Estimation (`storyPoints`, `estimatedHours`, `isBacklog`, `sprintId` on `Task` + dashboard capacity analytics).
     - [x] Task Bulk Operations (`POST /tasks/bulk-update` and `POST /tasks/bulk-delete` with workspace security checks).
 
+27. [x] **Production Audit — Phase 4 (Subphase 4B: Distributed Real-Time Scale & Interactive Polish)**:
+    - [x] Socket.IO Redis Adapter Presence: Configured `@socket.io/redis-adapter` on root server instance with Redis presence tracking (`isUserOnline`, `getOnlineUserIdsInWorkspace`, heartbeat fallbacks).
+    - [x] Comment Emoji Reactions: `CommentReaction` model, compound unique key, reaction toggle endpoint (`POST /tasks/:taskId/comments/:commentId/reactions`), grouped reaction counts with `hasReacted` flag, and `comment:reaction` realtime event broadcast.
+28. [x] **Production Audit — Phase 5 (Subphase 5A: Real-Time Event Pipeline & Search Accuracy)**:
+    - [x] Wire Domain Real-Time Events: Emitted `task.created` in `TaskService.createTask`, `task.updated` in `TaskService.updateTask`, `task.deleted` in `TaskService.deleteTask`, and `notification.created` in `NotificationService` (upon task assignment, comment mention, and workspace invitation).
+    - [x] Global Search by Task Key: Included `{ key: { contains: searchTerm, mode: 'insensitive' } }` and selected `key` in `SearchService.searchWorkspace`.
+    - [x] Added Unit Test Suites: Created `notification.service.spec.ts` (7 tests) and expanded `task.service.spec.ts` (3 new tests for domain event emission).
+29. [x] **Production Audit — Phase 5 (Subphase 5B: Lifecycle Governance & Cloud Readiness)**:
+    - [x] Cloud Health Probe Endpoint: `HealthModule` with `GET /health` (uptime, db connectivity, memory, timestamp) exempt from global `/api/v1` prefix.
+    - [x] Workspace Lifecycle & Voluntary Departure: `DELETE /workspaces/:workspaceId` (soft-delete workspace by Owner) and `POST /workspaces/:workspaceId/leave` (voluntary departure for non-owners with owner exit rejection guardrail).
+    - [x] Activity & Audit Trail Integration: Added `WORKSPACE_DELETED` and `MEMBER_LEFT` / `WORKSPACE_LEFT` logging.
+    - [x] Docker & Compose Infrastructure: Configured Redis authentication with password in `docker-compose.yml`, created multi-stage production `Dockerfile` and `.dockerignore`.
+    - [x] Unit Test Suites: Added `health.service.spec.ts` (2 tests) and `workspace.service.spec.ts` (8 tests) bringing total suite to 88 passing unit tests.
+
 ---
 
-# Next Feature (What to do next)
+# Future Phase: Phase 6 — Advanced Team Collaboration & Scaling (Post-MVP)
 
-```
-Current Sprint: Production Audit — Phase 4 (Subphase 4B: Distributed Real-Time Scale & Interactive Polish)
-1. Socket.IO Redis Adapter Presence (Distributed WebSocket scaling via @socket.io/redis-adapter).
-2. Comment Emoji Reactions (CommentReaction entity & toggle endpoints).
+```text
+Phase 6 Planned Scope:
+1. Task Dependencies & Blockers (BLOCKS, IS_BLOCKED_BY, RELATES_TO with circular dependency detection).
+2. Multi-Assignees on Tasks (TaskAssignee join model for pair programming).
+3. Project Visibility & Member Privacy (PUBLIC vs PRIVATE projects with ProjectMember authorization).
 ```
 
 

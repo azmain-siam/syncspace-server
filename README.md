@@ -139,13 +139,22 @@ GOOGLE_CALLBACK_URL="http://localhost:5000/api/v1/auth/google/callback"
 - **PostgreSQL**: v15+
 - **Redis**: v7+
 
-You can spin up PostgreSQL and Redis locally using Docker:
+You can spin up PostgreSQL and Redis using the included `docker-compose.yml`:
 ```bash
-# PostgreSQL
-docker run -d --name postgres -p 5432:5432 -e POSTGRES_PASSWORD=postgres -e POSTGRES_DB=syncspaceDB postgres:alpine
+# Start PostgreSQL and Redis containers
+docker compose up -d
 
-# Redis (with authentication)
-docker run -d --name redis -p 6379:6379 redis:latest redis-server --requirepass password
+# Check service health
+docker compose ps
+```
+
+Or build and run the production Docker container:
+```bash
+# Build production image
+docker build -t syncspace-server .
+
+# Run container
+docker run -d -p 5000:5000 --env-file .env syncspace-server
 ```
 
 ### 2. Install Dependencies
@@ -190,6 +199,9 @@ The server starts on `http://localhost:5000` with the global prefix `/api/v1`. I
 
 ## 🌐 API Reference (Base URL: `/api/v1`)
 
+### 🏥 System Health & Cloud Probes (Root: `/health`)
+- `GET /health` — Cloud health probe for Kubernetes/ECS/Render/Cloud Run (returns status, uptime, memory, and database connectivity).
+
 ### 🔐 Authentication & Identity
 - `POST /auth/register` — Register account (sends email verification token).
 - `POST /auth/login` — Login with email/password; returns access & refresh tokens.
@@ -211,6 +223,8 @@ The server starts on `http://localhost:5000` with the global prefix `/api/v1`. I
 ### 🏢 Workspaces & Members
 - `POST /workspaces` — Create workspace (auto-seeds starter "General" project, board, columns, and guide tasks).
 - `GET /workspaces` — List workspaces where caller is a member.
+- `DELETE /workspaces/:workspaceId` — Soft-delete workspace (Owner only).
+- `POST /workspaces/:workspaceId/leave` — Leave workspace voluntarily (Non-owners only).
 - `POST /workspaces/:workspaceId/members` — Invite member by email (restricted to Owner/Admin).
 - `DELETE /workspaces/:workspaceId/members/:userId` — Remove member from workspace.
 - `PATCH /workspaces/:workspaceId/members/:memberId/role` — Update member role (`OWNER`, `ADMIN`, `MEMBER`, `GUEST`).
