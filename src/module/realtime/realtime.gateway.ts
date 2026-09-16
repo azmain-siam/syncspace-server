@@ -94,7 +94,15 @@ export class RealtimeGateway
 
       await Promise.all([this.pubClient.connect(), this.subClient.connect()]);
 
-      server.adapter(createAdapter(this.pubClient, this.subClient));
+      // In NestJS, when a gateway specifies a namespace, server is a Namespace instance.
+      // The .adapter(constructor) method lives on the root Server instance (Namespace.server).
+      const rootServer: Server =
+        'server' in server &&
+        Boolean((server as unknown as { server: Server }).server)
+          ? (server as unknown as { server: Server }).server
+          : server;
+
+      rootServer.adapter(createAdapter(this.pubClient, this.subClient));
 
       this.logger.log(
         'Socket.IO Redis Adapter successfully attached for distributed presence and room synchronization',
