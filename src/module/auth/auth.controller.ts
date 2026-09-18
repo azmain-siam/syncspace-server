@@ -17,6 +17,7 @@ import { AuthService } from './auth.service';
 import { ForgotPasswordDto } from './dto/forgot-password.dto';
 import { LoginDto } from './dto/login.dto';
 import { RegisterDto } from './dto/register.dto';
+import { ResendVerificationDto } from './dto/resend-verification.dto';
 import { ResetPasswordDto } from './dto/reset-password.dto';
 import { VerifyEmailDto } from './dto/verify-email.dto';
 import { GoogleAuthGuard } from './guards/google-auth.guard';
@@ -46,11 +47,12 @@ export class AuthController {
   }
 
   @Post('resend-verification')
-  @UseGuards(JwtAuthGuard)
-  @ResponseMessage('Verification email resent successfully')
+  @ResponseMessage(
+    'If an unverified account exists with this email, a verification link has been sent.',
+  )
   @ApiOperation({ summary: 'Resend email verification token' })
-  resendVerification(@CurrentUser() user: User) {
-    return this.authService.resendVerificationEmail(user.id);
+  resendVerification(@Body() dto: ResendVerificationDto) {
+    return this.authService.resendVerificationEmail(dto);
   }
 
   @Post('login')

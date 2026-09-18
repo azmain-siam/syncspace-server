@@ -208,7 +208,7 @@ The server starts on `http://localhost:5000` with the global prefix `/api/v1`. I
 - `POST /auth/refresh` — Rotate refresh token and issue fresh access token.
 - `POST /auth/logout` — Revoke refresh session.
 - `GET /auth/verify-email` — Verify email address with single-use token.
-- `POST /auth/resend-verification` — Resend verification email.
+- `POST /auth/resend-verification` — Resend verification email (unauthenticated, accepts `{ email }`).
 - `POST /auth/forgot-password` — Request password reset email (anti-enumeration).
 - `POST /auth/reset-password` — Set new password using single-use reset token.
 - `GET /auth/google` — Initiate Google OAuth 2.0 flow.

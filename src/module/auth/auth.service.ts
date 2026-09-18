@@ -16,6 +16,7 @@ import { BCRYPT_SALT_ROUNDS } from './auth.constants';
 import { ForgotPasswordDto } from './dto/forgot-password.dto';
 import { LoginDto } from './dto/login.dto';
 import { RegisterDto } from './dto/register.dto';
+import { ResendVerificationDto } from './dto/resend-verification.dto';
 import { ResetPasswordDto } from './dto/reset-password.dto';
 import { JwtPayload } from './interfaces/jwt-payload.interface';
 import { OAuthService } from './services/oauth.service';
@@ -122,8 +123,8 @@ export class AuthService {
   }
 
   // Resend Verification Email (Delegated to PasswordResetService)
-  async resendVerificationEmail(userId: string) {
-    return this.passwordResetService.resendVerificationEmail(userId);
+  async resendVerificationEmail(dto: ResendVerificationDto) {
+    return this.passwordResetService.resendVerificationEmail(dto);
   }
 
   // Forgot Password (Delegated to PasswordResetService)

@@ -1,8 +1,4 @@
-import {
-  BadRequestException,
-  Injectable,
-  UnauthorizedException,
-} from '@nestjs/common';
+import { BadRequestException, Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { VerificationTokenType } from '@prisma/client';
 import * as bcrypt from 'bcrypt';
@@ -13,6 +9,7 @@ import { PrismaService } from 'src/module/prisma/prisma.service';
 import { EmailQueueService } from 'src/module/queue/email/email.queue.service';
 import { BCRYPT_SALT_ROUNDS } from '../auth.constants';
 import { ForgotPasswordDto } from '../dto/forgot-password.dto';
+import { ResendVerificationDto } from '../dto/resend-verification.dto';
 import { ResetPasswordDto } from '../dto/reset-password.dto';
 
 @Injectable()
@@ -82,24 +79,24 @@ export class PasswordResetService {
     };
   }
 
-  // Resend Verification Email
-  async resendVerificationEmail(userId: string) {
+  // Resend Verification Email (Public & Anti-user enumeration safe)
+  async resendVerificationEmail(dto: ResendVerificationDto) {
     const user = await this.prisma.user.findUnique({
-      where: { id: userId },
+      where: { email: dto.email.toLowerCase() },
     });
 
-    if (!user) {
-      throw new UnauthorizedException('User not found');
-    }
-
-    if (user.isEmailVerified) {
-      throw new BadRequestException('Email is already verified');
+    // Anti-user enumeration: Always return standard message even if user not found or already verified
+    if (!user || user.isEmailVerified) {
+      return {
+        message:
+          'If an unverified account exists with this email, a verification link has been sent.',
+      };
     }
 
     // Invalidate previous unused verification tokens
     await this.prisma.verificationToken.updateMany({
       where: {
-        userId,
+        userId: user.id,
         type: VerificationTokenType.EMAIL_VERIFICATION,
         usedAt: null,
       },
@@ -113,7 +110,7 @@ export class PasswordResetService {
 
     await this.prisma.verificationToken.create({
       data: {
-        userId,
+        userId: user.id,
         token: hashedToken,
         type: VerificationTokenType.EMAIL_VERIFICATION,
         expiresAt,
@@ -133,16 +130,17 @@ export class PasswordResetService {
     });
 
     await this.auditLogService.log({
-      actorId: userId,
+      actorId: user.id,
       action: AuditAction.VERIFICATION_EMAIL_RESENT,
       metadata: {
-        userId,
+        userId: user.id,
         email: user.email,
       },
     });
 
     return {
-      message: 'Verification email resent successfully.',
+      message:
+        'If an unverified account exists with this email, a verification link has been sent.',
     };
   }
 
