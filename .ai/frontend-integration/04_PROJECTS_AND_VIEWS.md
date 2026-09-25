@@ -1,201 +1,252 @@
-# Module 4: Projects & Views (`/projects`, `/workspaces/:workspaceId/projects`)
+# Module 04: Projects, Views, Links & Executive Status Updates
 
-> **Integration Target:** Project List, Project Creation & Settings, Project Archival/Deletion/Restore, and Flat Table/List View with Filters & Sorting  
-> **Backend Base URL:** `http://localhost:5000/api/v1`  
-> **Auth Type:** Bearer JWT (`Authorization: Bearer <accessToken>`)  
-
----
-
-## 1. Endpoints Overview
-
-All endpoints in this module require an active session (`Authorization: Bearer <accessToken>`).
-
-| Method | Endpoint | Required Role | Purpose |
-| :--- | :--- | :--- | :--- |
-| `GET` | `/workspaces/:workspaceId/projects` | Any Member | List active (non-archived, non-deleted) projects in workspace |
-| `POST` | `/workspaces/:workspaceId/projects` | `OWNER`, `ADMIN` | Create a new project (Auto-generates project key & slug) |
-| `GET` | `/workspaces/:workspaceId/projects/:projectId` | Any Member | Get single project details by UUID or slug |
-| `PATCH` | `/workspaces/:workspaceId/projects/:projectId` | `OWNER`, `ADMIN` | Update project title, description, priority, color, due date, status |
-| `PATCH` | `/workspaces/:workspaceId/projects/:projectId/archive` | `OWNER` | Archive project (Sets status to `ARCHIVED`) |
-| `DELETE` | `/workspaces/:workspaceId/projects/:projectId` | `OWNER`, `ADMIN` | Soft-delete project (Movable to Trash) |
-| `PATCH` | `/workspaces/:workspaceId/projects/:projectId/restore` | `OWNER`, `ADMIN` | Restore soft-deleted / archived project to `ACTIVE` |
-| `GET` | `/projects/:projectId/tasks` | Any Member | **Flat Table/List View API** with multi-column sorting, search, & checklist progress |
+> **Prefix**: `/api/v1`  
+> **Target Audience**: Frontend Engineers / Frontend AI Agents  
+> **Auth Required**: Bearer JWT (`Authorization: Bearer <accessToken>`)  
+> **Response Wrapper**: All successful JSON responses follow the standardized envelope `{ success: true, statusCode: number, message: string, data: T }`.
 
 ---
 
-## 2. Core TypeScript Interfaces & Enums
+## 🏗️ 1. TypeScript Types & Enums
 
-### Enums
 ```typescript
+export enum ProjectVisibility {
+  PUBLIC = 'PUBLIC',   // Visible to all workspace members
+  PRIVATE = 'PRIVATE', // Visible ONLY to explicit ProjectMembers and Workspace Owner/Admins
+}
+
 export enum ProjectPriority {
-  LOW = 'LOW',
-  MEDIUM = 'MEDIUM',
-  HIGH = 'HIGH',
-  CRITICAL = 'CRITICAL',
-}
-
-export enum ProjectStatus {
-  PLANNING = 'PLANNING',
-  ACTIVE = 'ACTIVE',
-  ON_HOLD = 'ON_HOLD',
-  COMPLETED = 'COMPLETED',
-  ARCHIVED = 'ARCHIVED',
-}
-
-export enum TaskStatus {
-  BACKLOG = 'BACKLOG',
-  TODO = 'TODO',
-  IN_PROGRESS = 'IN_PROGRESS',
-  IN_REVIEW = 'IN_REVIEW',
-  DONE = 'DONE',
-  CANCELLED = 'CANCELLED',
-}
-
-export enum TaskPriority {
   LOW = 'LOW',
   MEDIUM = 'MEDIUM',
   HIGH = 'HIGH',
   URGENT = 'URGENT',
 }
-```
 
-### Project Model
-```typescript
-export interface Project {
+export enum ProjectHealth {
+  ON_TRACK = 'ON_TRACK',
+  AT_RISK = 'AT_RISK',
+  OFF_TRACK = 'OFF_TRACK',
+}
+
+export enum ProjectStatus {
+  ACTIVE = 'ACTIVE',
+  ARCHIVED = 'ARCHIVED',
+  COMPLETED = 'COMPLETED',
+}
+
+export enum ProjectMemberRole {
+  MANAGER = 'MANAGER',
+  LEAD = 'LEAD',
+  MEMBER = 'MEMBER',
+  VIEWER = 'VIEWER',
+}
+
+export interface UserMinimal {
+  id: string;
+  name: string;
+  email: string;
+  avatarUrl: string | null;
+}
+
+export interface ProjectLink {
+  id: string;
+  projectId: string;
+  title: string;
+  url: string;
+  type?: string | null; // e.g. 'FIGMA', 'NOTION', 'GITHUB', 'PRD', 'DOCS'
+  createdById: string;
+  createdBy: UserMinimal;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface ProjectStatusUpdate {
+  id: string;
+  projectId: string;
+  authorId: string;
+  author: UserMinimal;
+  health: ProjectHealth;
+  message: string; // Markdown summary
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface ProjectSummary {
   id: string;
   workspaceId: string;
+  slug: string;
+  key: string;
   title: string;
-  key: string;              // Auto-generated human-readable prefix (e.g. "ENG", "GEN")
-  slug: string;             // URL-friendly slug
-  taskCounter: number;      // Sequence number for task keys
   description: string | null;
-  status: ProjectStatus;
+  brief: string | null;
+  icon: string | null;
+  color: string;
+  visibility: ProjectVisibility;
   priority: ProjectPriority;
-  color: string | null;     // Hex color code (e.g. "#4F46E5")
-  startDate: string | null; // ISO 8601 Date string
-  dueDate: string | null;   // ISO 8601 Date string
+  health: ProjectHealth;
+  status: ProjectStatus;
+  leadId: string | null;
+  lead: UserMinimal | null;
   createdById: string;
-  createdAt: string;
-  updatedAt: string;
-  deletedAt: string | null;
-}
-```
-
-### Flat Table View Task Model
-```typescript
-export interface TableViewTask {
-  id: string;
-  key: string;               // e.g. "ENG-42"
-  taskNumber: number;        // e.g. 42
-  title: string;
-  description: string | null;
-  status: TaskStatus;
-  priority: TaskPriority;
-  order: number;
-  storyPoints: number | null;
-  estimatedHours: number | null;
+  createdBy: UserMinimal;
+  startDate: string | null;
   dueDate: string | null;
-  isBacklog: boolean;
-  sprintId: string | null;
-  columnId: string;
-  createdBy: string;
-  assigneeId: string | null;
+  repoUrl: string | null;
+  metadata: Record<string, unknown> | null;
   createdAt: string;
   updatedAt: string;
-  assignee: {
-    id: string;
-    name: string;
-    email: string;
-    avatar: string | null;
-  } | null;
-  column: {
-    id: string;
-    title: string;
-    order: number;
-    board: {
-      id: string;
-      title: string;
-    };
-  };
-  labels: Array<{
-    id: string;
-    name: string;
-    color: string;
-  }>;
-  checklists: Array<{
-    id: string;
-    title: string;
-    isCompleted: boolean;
-    order: number;
-  }>;
-  checklistProgress: {
-    total: number;
-    completed: number;
-    percentage: number;      // 0 to 100
-  };
-  _count: {
-    comments: number;
-    attachments: number;
-    checklists: number;
+  _count?: {
+    projectMembers: number;
+    boards: number;
+    sprints: number;
+    links: number;
   };
 }
 
-export interface PaginationMeta {
-  total: number;
-  page: number;
-  limit: number;
-  totalPages: number;
-  hasNextPage: boolean;
-  hasPrevPage: boolean;
-}
-
-export interface ProjectTasksTableResponse {
-  project: {
+export interface ProjectDetail extends ProjectSummary {
+  projectMembers: Array<{
+    id: string;
+    projectId: string;
+    userId: string;
+    role: ProjectMemberRole;
+    user: UserMinimal;
+  }>;
+  links: ProjectLink[];
+  statusUpdates: ProjectStatusUpdate[];
+  boards: Array<{
     id: string;
     title: string;
-    key: string;
-    slug: string;
-    workspaceId: string;
-  };
-  tasks: TableViewTask[];
-  meta: PaginationMeta;
+    _count: { columns: number };
+  }>;
+  sprints: Array<{
+    id: string;
+    name: string;
+    startDate: string;
+    endDate: string;
+    status: string;
+  }>;
 }
 ```
 
 ---
 
-## 3. Endpoint Specifications
+## 📡 2. API Endpoints
 
-### 3.1 Get Workspace Projects
-Fetches all non-archived, non-deleted projects for the active workspace.
+### 2.1 Create Project
+- **Method**: `POST`
+- **URL**: `/api/v1/projects/:workspaceId`
+- **Permission**: Workspace `OWNER`, `ADMIN`, or `MEMBER`
+- **Behavior**: Auto-generates `key` (if omitted) and `slug` (if omitted). Defaults `leadId` to current user. Auto-adds creator as `MANAGER` and lead as `LEAD`. Auto-creates default Kanban Board ("To Do", "In Progress", "Done").
 
-- **Route:** `GET /api/v1/workspaces/:workspaceId/projects`
-- **Headers:** `Authorization: Bearer <accessToken>`
+#### Request Body
+```json
+{
+  "title": "Auth & SSO Service",
+  "key": "AUTH",
+  "slug": "auth-and-sso-service",
+  "description": "Central identity and OAuth2 gateway",
+  "brief": "# Scope & Objectives\nDeliver robust SSO with Okta & Google Workspace.",
+  "icon": "shield-check",
+  "color": "#3B82F6",
+  "visibility": "PUBLIC",
+  "priority": "HIGH",
+  "health": "ON_TRACK",
+  "leadId": "3fa85f64-5717-4562-b3fc-2c963f66afa6",
+  "startDate": "2026-10-01T00:00:00.000Z",
+  "dueDate": "2026-12-15T00:00:00.000Z",
+  "repoUrl": "https://github.com/syncspace/auth-service",
+  "metadata": { "department": "Platform", "budget": 15000 }
+}
+```
 
-#### Success Response (200 OK)
+#### Response (201 Created)
+```json
+{
+  "success": true,
+  "statusCode": 201,
+  "message": "Project created successfully",
+  "data": {
+    "id": "7b8e1f02-6922-4161-9c3f-912a76fbd14b",
+    "workspaceId": "e304b77f-5d1b-4179-b1d1-6784d0b1a0e1",
+    "title": "Auth & SSO Service",
+    "key": "AUTH",
+    "slug": "auth-and-sso-service",
+    "description": "Central identity and OAuth2 gateway",
+    "brief": "# Scope & Objectives\nDeliver robust SSO with Okta & Google Workspace.",
+    "icon": "shield-check",
+    "color": "#3B82F6",
+    "visibility": "PUBLIC",
+    "priority": "HIGH",
+    "health": "ON_TRACK",
+    "status": "ACTIVE",
+    "leadId": "3fa85f64-5717-4562-b3fc-2c963f66afa6",
+    "createdById": "user-uuid-1",
+    "startDate": "2026-10-01T00:00:00.000Z",
+    "dueDate": "2026-12-15T00:00:00.000Z",
+    "repoUrl": "https://github.com/syncspace/auth-service",
+    "metadata": { "department": "Platform", "budget": 15000 },
+    "createdAt": "2026-09-25T12:00:00.000Z",
+    "updatedAt": "2026-09-25T12:00:00.000Z",
+    "createdBy": {
+      "id": "user-uuid-1",
+      "name": "Sarah Connor",
+      "email": "sarah@syncspace.io",
+      "avatarUrl": null
+    },
+    "lead": {
+      "id": "3fa85f64-5717-4562-b3fc-2c963f66afa6",
+      "name": "Alex Techlead",
+      "email": "alex@syncspace.io",
+      "avatarUrl": "https://avatar.url"
+    }
+  }
+}
+```
+
+---
+
+### 2.2 List Workspace Projects
+- **Method**: `GET`
+- **URL**: `/api/v1/projects/:workspaceId`
+- **Behavior**: Returns all non-archived projects. If caller is regular `MEMBER`, filters out `PRIVATE` projects unless caller is a member of that project.
+
+#### Response (200 OK)
 ```json
 {
   "success": true,
   "statusCode": 200,
-  "message": "Projects fetched successfully",
+  "message": "Projects retrieved successfully",
   "data": [
     {
-      "id": "p1a2b3c4-5d6e-7f8a-9b0c-1d2e3f4a5b6c",
-      "workspaceId": "f29a1b02-5e48-47e2-8926-d62194f1c93a",
-      "title": "General",
-      "key": "GEN",
-      "slug": "general",
-      "taskCounter": 2,
-      "description": "Default project for team collaboration",
-      "status": "ACTIVE",
-      "priority": "MEDIUM",
+      "id": "7b8e1f02-6922-4161-9c3f-912a76fbd14b",
+      "workspaceId": "e304b77f-5d1b-4179-b1d1-6784d0b1a0e1",
+      "title": "Auth & SSO Service",
+      "key": "AUTH",
+      "slug": "auth-and-sso-service",
+      "icon": "shield-check",
       "color": "#3B82F6",
-      "startDate": "2026-09-18T10:00:00.000Z",
-      "dueDate": null,
-      "createdById": "c1f7a2d8-4b2e-4b6a-9f5b-1c2d3e4f5a6b",
-      "createdAt": "2026-09-18T10:00:00.000Z",
-      "updatedAt": "2026-09-18T10:00:00.000Z",
-      "deletedAt": null
+      "visibility": "PUBLIC",
+      "priority": "HIGH",
+      "health": "ON_TRACK",
+      "status": "ACTIVE",
+      "lead": {
+        "id": "3fa85f64-5717-4562-b3fc-2c963f66afa6",
+        "name": "Alex Techlead",
+        "email": "alex@syncspace.io",
+        "avatarUrl": null
+      },
+      "createdBy": {
+        "id": "user-uuid-1",
+        "name": "Sarah Connor",
+        "email": "sarah@syncspace.io",
+        "avatarUrl": null
+      },
+      "_count": {
+        "projectMembers": 5,
+        "boards": 1,
+        "sprints": 2,
+        "links": 3
+      }
     }
   ]
 }
@@ -203,279 +254,194 @@ Fetches all non-archived, non-deleted projects for the active workspace.
 
 ---
 
-### 3.2 Create Project
-Creates a new project within a workspace.  
-✨ The backend auto-generates a clean human key (`GEN`, `ENG`, `SYNC`) and a URL-friendly slug.
+### 2.3 Get Project by ID or Slug
+- **Method**: `GET`
+- **URL**: `/api/v1/projects/:workspaceId/:projectIdOrSlug` (Accepts UUID or slug)
+- **Permissions**: Enforces `PRIVATE` access guard (returns 403 if user lacks access).
 
-- **Route:** `POST /api/v1/workspaces/:workspaceId/projects`
-- **Headers:** `Authorization: Bearer <accessToken>`, `Content-Type: application/json`
-- **Permissions:** `OWNER`, `ADMIN`
-
-#### Request Body
-```typescript
-export interface CreateProjectRequest {
-  title: string;              // 2 to 100 characters (Required)
-  description?: string;       // Max 1000 characters
-  dueDate?: string;           // ISO 8601 date string (e.g. "2026-12-31T23:59:59Z")
-  color?: string;             // Valid Hex color (e.g. "#4F46E5")
-  priority?: ProjectPriority; // "LOW" | "MEDIUM" | "HIGH" | "CRITICAL" (Default: "MEDIUM")
-}
-```
-
-#### Request Example
-```json
-{
-  "title": "Core Platform API",
-  "description": "Backend API development, auth, and database scaling",
-  "priority": "HIGH",
-  "color": "#6366F1",
-  "dueDate": "2026-12-31T00:00:00.000Z"
-}
-```
-
-#### Success Response (201 Created)
+#### Response (200 OK)
 ```json
 {
   "success": true,
-  "statusCode": 201,
-  "message": "Project created successfully",
+  "statusCode": 200,
+  "message": "Project retrieved successfully",
   "data": {
-    "id": "e4f5a6b7-8c9d-0e1f-2a3b-4c5d6e7f8a9b",
-    "workspaceId": "f29a1b02-5e48-47e2-8926-d62194f1c93a",
-    "title": "Core Platform API",
-    "key": "COR",
-    "slug": "core-platform-api",
-    "taskCounter": 0,
-    "description": "Backend API development, auth, and database scaling",
-    "status": "ACTIVE",
+    "id": "7b8e1f02-6922-4161-9c3f-912a76fbd14b",
+    "workspaceId": "e304b77f-5d1b-4179-b1d1-6784d0b1a0e1",
+    "title": "Auth & SSO Service",
+    "key": "AUTH",
+    "slug": "auth-and-sso-service",
+    "description": "Central identity and OAuth2 gateway",
+    "brief": "# Scope & Objectives\nDeliver robust SSO with Okta & Google Workspace.",
+    "icon": "shield-check",
+    "color": "#3B82F6",
+    "visibility": "PUBLIC",
     "priority": "HIGH",
-    "color": "#6366F1",
-    "startDate": "2026-09-18T14:00:00.000Z",
-    "dueDate": "2026-12-31T00:00:00.000Z",
-    "createdById": "c1f7a2d8-4b2e-4b6a-9f5b-1c2d3e4f5a6b",
-    "createdAt": "2026-09-18T14:00:00.000Z",
-    "updatedAt": "2026-09-18T14:00:00.000Z",
-    "deletedAt": null
-  }
-}
-```
-
-#### Errors
-- `400 Bad Request`: Validation failure (e.g. `["title must be longer than or equal to 2 characters", "color must be a hexadecimal color"]`).
-- `403 Forbidden`: User is a `MEMBER` or `GUEST` (Only Owner and Admin can create projects).
-
----
-
-### 3.3 Get Project by ID or Slug
-- **Route:** `GET /api/v1/workspaces/:workspaceId/projects/:projectId`  
-  *(Accepts either UUID `e4f5a6b7-...` or slug `core-platform-api`)*
-- **Headers:** `Authorization: Bearer <accessToken>`
-
-#### Success Response (200 OK)
-Returns the single `Project` object.
-
-#### Errors
-- `404 Not Found`: `"Project not found"`
-
----
-
-### 3.4 Update Project
-- **Route:** `PATCH /api/v1/workspaces/:workspaceId/projects/:projectId`
-- **Headers:** `Authorization: Bearer <accessToken>`, `Content-Type: application/json`
-- **Permissions:** `OWNER`, `ADMIN`
-
-#### Request Body
-```typescript
-export interface UpdateProjectRequest {
-  title?: string;
-  description?: string;
-  dueDate?: string;
-  color?: string;
-  priority?: ProjectPriority;
-  status?: ProjectStatus; // "PLANNING" | "ACTIVE" | "ON_HOLD" | "COMPLETED" | "ARCHIVED"
-}
-```
-
-#### Success Response (200 OK)
-Returns the updated `Project` object.
-
----
-
-### 3.5 Archive Project
-- **Route:** `PATCH /api/v1/workspaces/:workspaceId/projects/:projectId/archive`
-- **Headers:** `Authorization: Bearer <accessToken>`
-- **Permissions:** `OWNER` only.
-
-#### Success Response (200 OK)
-```json
-{
-  "success": true,
-  "statusCode": 200,
-  "message": "Project archived successfully",
-  "data": {
-    "id": "e4f5a6b7-8c9d-0e1f-2a3b-4c5d6e7f8a9b",
-    "status": "ARCHIVED"
-  }
-}
-```
-
----
-
-### 3.6 Soft-Delete Project (Move to Trash)
-- **Route:** `DELETE /api/v1/workspaces/:workspaceId/projects/:projectId`
-- **Headers:** `Authorization: Bearer <accessToken>`
-- **Permissions:** `OWNER`, `ADMIN`
-
-#### Success Response (200 OK)
-```json
-{
-  "success": true,
-  "statusCode": 200,
-  "message": "Project deleted successfully",
-  "data": {
-    "message": "Project deleted successfully",
-    "id": "e4f5a6b7-8c9d-0e1f-2a3b-4c5d6e7f8a9b"
-  }
-}
-```
-
----
-
-### 3.7 Restore Soft-Deleted / Archived Project
-- **Route:** `PATCH /api/v1/workspaces/:workspaceId/projects/:projectId/restore`
-- **Headers:** `Authorization: Bearer <accessToken>`
-- **Permissions:** `OWNER`, `ADMIN`
-
-#### Success Response (200 OK)
-```json
-{
-  "success": true,
-  "statusCode": 200,
-  "message": "Project restored successfully",
-  "data": {
-    "id": "e4f5a6b7-8c9d-0e1f-2a3b-4c5d6e7f8a9b",
+    "health": "ON_TRACK",
     "status": "ACTIVE",
-    "deletedAt": null
+    "lead": {
+      "id": "3fa85f64-5717-4562-b3fc-2c963f66afa6",
+      "name": "Alex Techlead",
+      "email": "alex@syncspace.io",
+      "avatarUrl": null
+    },
+    "projectMembers": [
+      {
+        "id": "pm-uuid-1",
+        "projectId": "7b8e1f02-6922-4161-9c3f-912a76fbd14b",
+        "userId": "3fa85f64-5717-4562-b3fc-2c963f66afa6",
+        "role": "LEAD",
+        "user": {
+          "id": "3fa85f64-5717-4562-b3fc-2c963f66afa6",
+          "name": "Alex Techlead",
+          "email": "alex@syncspace.io",
+          "avatarUrl": null
+        }
+      }
+    ],
+    "links": [
+      {
+        "id": "link-1",
+        "projectId": "7b8e1f02-6922-4161-9c3f-912a76fbd14b",
+        "title": "Figma Wireframes",
+        "url": "https://figma.com/file/xyz",
+        "type": "FIGMA",
+        "createdBy": { "id": "user-uuid-1", "name": "Sarah Connor", "email": "sarah@syncspace.io", "avatarUrl": null },
+        "createdAt": "2026-09-25T12:00:00.000Z"
+      }
+    ],
+    "statusUpdates": [
+      {
+        "id": "update-1",
+        "projectId": "7b8e1f02-6922-4161-9c3f-912a76fbd14b",
+        "health": "ON_TRACK",
+        "message": "Completed SAML spike, starting backend implementation.",
+        "createdAt": "2026-09-25T10:00:00.000Z",
+        "author": { "id": "3fa85f64-5717-4562-b3fc-2c963f66afa6", "name": "Alex Techlead", "email": "alex@syncspace.io", "avatarUrl": null }
+      }
+    ],
+    "boards": [{ "id": "board-1", "title": "Main Board", "_count": { "columns": 3 } }],
+    "sprints": [{ "id": "sprint-1", "name": "Sprint 14", "status": "ACTIVE", "startDate": "...", "endDate": "..." }]
   }
 }
 ```
 
 ---
 
-### 3.8 Project Flat Table / List View API
-This endpoint powers the **Project Table View / List View**, offering multi-column sorting, multi-attribute filtering, subtask checklist progress, and search.
+### 2.4 Update Project
+- **Method**: `PATCH`
+- **URL**: `/api/v1/projects/:workspaceId/:projectIdOrSlug`
+- **Request Body**: Partial `CreateProjectDto` + `status` (`ACTIVE`, `ARCHIVED`, `COMPLETED`).
+- **Response**: Updated `ProjectDetail`.
 
-- **Route:** `GET /api/v1/projects/:projectId/tasks`  
-  *(Also accessible via `GET /api/v1/workspaces/:workspaceId/projects/:projectId/tasks`)*
-- **Headers:** `Authorization: Bearer <accessToken>`
+---
 
-#### Query Parameters
-| Param | Type | Default | Options / Format | Description |
-| :--- | :--- | :--- | :--- | :--- |
-| `page` | `number` | `1` | Min: 1 | Current pagination page |
-| `limit` | `number` | `20` | Min: 1, Max: 100 | Items per page |
-| `sortBy` | `string` | `'order'` | `'dueDate' \| 'priority' \| 'status' \| 'createdAt' \| 'title' \| 'order'` | Sort field |
-| `sortOrder` | `string` | `'asc'` | `'asc' \| 'desc'` | Sort direction |
-| `status` | `string` | Optional | `'TODO' \| 'IN_PROGRESS' \| 'IN_REVIEW' \| 'DONE' \| 'CANCELLED'` | Filter by status |
-| `priority` | `string` | Optional | `'LOW' \| 'MEDIUM' \| 'HIGH' \| 'URGENT'` | Filter by priority |
-| `assigneeId`| `string` | Optional | UUID string | Filter by assigned user |
-| `labelId` | `string` | Optional | UUID string | Filter by label tag |
-| `search` | `string` | Optional | Text or Key | Search in title, description, or key (`GEN-1`) |
+### 2.5 Project Links (Resources & Bookmarks)
 
-#### Example Query URL
-```text
-GET /api/v1/projects/core-platform-api/tasks?page=1&limit=20&sortBy=dueDate&sortOrder=asc&priority=HIGH&search=auth
+#### Add Link
+- **Method**: `POST`
+- **URL**: `/api/v1/projects/:workspaceId/:projectId/links`
+- **Request Body**:
+```json
+{
+  "title": "API Documentation",
+  "url": "https://docs.syncspace.io/api",
+  "type": "DOCS"
+}
 ```
 
-#### Success Response (200 OK)
+#### List Links
+- **Method**: `GET`
+- **URL**: `/api/v1/projects/:workspaceId/:projectId/links`
+
+#### Delete Link
+- **Method**: `DELETE`
+- **URL**: `/api/v1/projects/:workspaceId/:projectId/links/:linkId`
+
+---
+
+### 2.6 Executive Status Updates (Progress Reports & Health Sync)
+
+#### Post Status Update
+- **Method**: `POST`
+- **URL**: `/api/v1/projects/:workspaceId/:projectId/status-updates`
+- **Behavior**: Creates status log entry and atomically synchronizes the parent project's `health` column.
+- **Request Body**:
+```json
+{
+  "health": "AT_RISK",
+  "message": "Blocked on third-party OAuth app verification with Apple. Contacting dev support."
+}
+```
+
+#### List Status Updates History
+- **Method**: `GET`
+- **URL**: `/api/v1/projects/:workspaceId/:projectId/status-updates`
+
+---
+
+### 2.7 Project Tasks (Table & List View)
+- **Method**: `GET`
+- **URL**: `/api/v1/projects/:projectIdOrSlug/tasks`
+- **Query Parameters**:
+  - `page`: number (default: 1)
+  - `limit`: number (default: 20)
+  - `status`: `TODO` | `IN_PROGRESS` | `IN_REVIEW` | `DONE`
+  - `priority`: `LOW` | `MEDIUM` | `HIGH` | `URGENT`
+  - `assigneeId`: string (User UUID)
+  - `labelId`: string (Label UUID)
+  - `search`: string (matches title, description, or task key)
+  - `sortBy`: `order` | `dueDate` | `priority` | `status` | `createdAt` | `title`
+  - `sortOrder`: `asc` | `desc`
+
+#### Response (200 OK)
 ```json
 {
   "success": true,
   "statusCode": 200,
-  "message": "Project tasks fetched successfully",
+  "message": "Project tasks retrieved successfully",
   "data": {
     "project": {
-      "id": "e4f5a6b7-8c9d-0e1f-2a3b-4c5d6e7f8a9b",
-      "title": "Core Platform API",
-      "key": "COR",
-      "slug": "core-platform-api",
-      "workspaceId": "f29a1b02-5e48-47e2-8926-d62194f1c93a"
+      "id": "7b8e1f02-6922-4161-9c3f-912a76fbd14b",
+      "title": "Auth & SSO Service",
+      "key": "AUTH",
+      "slug": "auth-and-sso-service",
+      "workspaceId": "e304b77f-5d1b-4179-b1d1-6784d0b1a0e1"
     },
     "tasks": [
       {
-        "id": "t1a2b3c4-1111-2222-3333-444455556666",
-        "key": "COR-1",
-        "taskNumber": 1,
-        "title": "Implement JWT Refresh Token Rotation",
-        "description": "Ensure refresh tokens are hashed and stored in database",
+        "id": "task-uuid-1",
+        "key": "AUTH-10",
+        "title": "Integrate GitHub OAuth Provider",
         "status": "IN_PROGRESS",
         "priority": "HIGH",
-        "order": 0,
-        "storyPoints": 5,
-        "estimatedHours": 8,
-        "dueDate": "2026-09-25T18:00:00.000Z",
-        "isBacklog": false,
-        "sprintId": "sp_12345",
-        "columnId": "col_progress",
-        "createdBy": "user_1",
-        "assigneeId": "user_1",
-        "createdAt": "2026-09-18T14:10:00.000Z",
-        "updatedAt": "2026-09-18T14:30:00.000Z",
+        "dueDate": "2026-10-15T18:00:00.000Z",
         "assignee": {
-          "id": "user_1",
-          "name": "Alex Johnson",
-          "email": "alex@example.com",
-          "avatar": "https://res.cloudinary.com/.../avatar.png"
+          "id": "user-uuid-2",
+          "name": "Alex Techlead",
+          "email": "alex@syncspace.io",
+          "avatarUrl": null
         },
-        "column": {
-          "id": "col_progress",
-          "title": "In Progress",
-          "order": 1,
-          "board": {
-            "id": "board_main",
-            "title": "Main Board"
-          }
-        },
-        "labels": [
-          {
-            "id": "lbl_auth",
-            "name": "Security",
-            "color": "#EF4444"
-          }
-        ],
-        "checklists": [
-          {
-            "id": "chk_1",
-            "title": "Create VerificationToken model",
-            "isCompleted": true,
-            "order": 0
-          },
-          {
-            "id": "chk_2",
-            "title": "Add refresh rotation endpoint",
-            "isCompleted": true,
-            "order": 1
-          }
-        ],
+        "labels": [{ "id": "lbl-1", "name": "OAuth", "color": "#10B981" }],
         "checklistProgress": {
-          "total": 2,
+          "total": 3,
           "completed": 2,
-          "percentage": 100
+          "percentage": 67
         },
         "_count": {
           "comments": 4,
           "attachments": 1,
-          "checklists": 2
+          "checklists": 3
         }
       }
     ],
     "meta": {
-      "total": 1,
       "page": 1,
       "limit": 20,
+      "total": 1,
       "totalPages": 1,
       "hasNextPage": false,
-      "hasPrevPage": false
+      "hasPreviousPage": false
     }
   }
 }
@@ -483,110 +449,16 @@ GET /api/v1/projects/core-platform-api/tasks?page=1&limit=20&sortBy=dueDate&sort
 
 ---
 
-## 4. Frontend AI Agent Recipes
+## 💡 3. Frontend Integration Guidelines
 
-### 4.1 Zod Validation Schemas
-```typescript
-import { z } from 'zod';
-import { ProjectPriority, ProjectStatus } from '@/types/project';
-
-export const createProjectSchema = z.object({
-  title: z.string().min(2, 'Title must be at least 2 characters').max(100),
-  description: z.string().max(1000).optional(),
-  dueDate: z.string().datetime().optional().or(z.literal('')),
-  color: z.string().regex(/^#([0-9a-fA-F]{3}|[0-9a-fA-F]{6})$/, 'Invalid hex color code').optional().or(z.literal('')),
-  priority: z.nativeEnum(ProjectPriority).default(ProjectPriority.MEDIUM),
-});
-
-export const updateProjectSchema = createProjectSchema.partial().extend({
-  status: z.nativeEnum(ProjectStatus).optional(),
-});
-```
-
----
-
-### 4.2 TanStack Query Hooks Pattern
-
-```typescript
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { apiClient } from '@/lib/api-client';
-import { ApiResponse, Project, ProjectTasksTableResponse, CreateProjectRequest, UpdateProjectRequest } from '@/types/project';
-
-// 1. Fetch Projects for active workspace
-export const useWorkspaceProjects = (workspaceId: string) => {
-  return useQuery({
-    queryKey: ['workspaces', workspaceId, 'projects'],
-    queryFn: async () => {
-      const response = await apiClient.get<ApiResponse<Project[]>>(
-        `/workspaces/${workspaceId}/projects`
-      );
-      return response.data.data;
-    },
-    enabled: !!workspaceId,
-  });
-};
-
-// 2. Fetch Single Project by UUID or slug
-export const useProject = (workspaceId: string, projectIdOrSlug: string) => {
-  return useQuery({
-    queryKey: ['workspaces', workspaceId, 'projects', projectIdOrSlug],
-    queryFn: async () => {
-      const response = await apiClient.get<ApiResponse<Project>>(
-        `/workspaces/${workspaceId}/projects/${projectIdOrSlug}`
-      );
-      return response.data.data;
-    },
-    enabled: !!workspaceId && !!projectIdOrSlug,
-  });
-};
-
-// 3. Fetch Flat Table View of Project Tasks
-export const useProjectTasksTable = (
-  projectIdOrSlug: string,
-  queryParams: Record<string, any> = {}
-) => {
-  return useQuery({
-    queryKey: ['projects', projectIdOrSlug, 'tasks-table', queryParams],
-    queryFn: async () => {
-      const response = await apiClient.get<ApiResponse<ProjectTasksTableResponse>>(
-        `/projects/${projectIdOrSlug}/tasks`,
-        { params: queryParams }
-      );
-      return response.data.data;
-    },
-    enabled: !!projectIdOrSlug,
-  });
-};
-
-// 4. Create Project Mutation
-export const useCreateProject = (workspaceId: string) => {
-  const queryClient = useQueryClient();
-
-  return useMutation({
-    mutationFn: async (dto: CreateProjectRequest) => {
-      const response = await apiClient.post<ApiResponse<Project>>(
-        `/workspaces/${workspaceId}/projects`,
-        dto
-      );
-      return response.data.data;
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['workspaces', workspaceId, 'projects'] });
-    },
-  });
-};
-
-// 5. Delete Project Mutation (Soft Delete)
-export const useDeleteProject = (workspaceId: string) => {
-  const queryClient = useQueryClient();
-
-  return useMutation({
-    mutationFn: async (projectId: string) => {
-      await apiClient.delete(`/workspaces/${workspaceId}/projects/${projectId}`);
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['workspaces', workspaceId, 'projects'] });
-    },
-  });
-};
-```
+1. **React Query Key Patterns**:
+   - `['workspaces', workspaceId, 'projects']`
+   - `['projects', projectIdOrSlug]`
+   - `['projects', projectId, 'links']`
+   - `['projects', projectId, 'status-updates']`
+   - `['projects', projectIdOrSlug, 'tasks', filters]`
+2. **Invalidations**:
+   - Creating/deleting a project link -> invalidate `['projects', projectId, 'links']` and `['projects', projectIdOrSlug]`.
+   - Creating a status update -> invalidate `['projects', projectId, 'status-updates']`, `['projects', projectIdOrSlug]`, and `['workspaces', workspaceId, 'dashboard', 'projects']`.
+3. **Private Project Handling**:
+   - When a 403 Forbidden is returned from `GET /projects/:workspaceId/:projectIdOrSlug`, display a standard "Private Project: Request Access" empty state.

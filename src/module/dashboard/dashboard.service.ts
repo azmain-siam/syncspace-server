@@ -586,6 +586,7 @@ export class DashboardService {
       },
       include: {
         createdBy: { select: SAFE_USER_MINIMAL_SELECT },
+        lead: { select: SAFE_USER_MINIMAL_SELECT },
         _count: {
           select: {
             projectMembers: true,
@@ -733,14 +734,20 @@ export class DashboardService {
         key: project.key,
         slug: project.slug,
         description: project.description,
+        brief: project.brief,
+        icon: project.icon,
+        color: project.color,
+        visibility: project.visibility,
         status: project.status,
         priority: project.priority,
-        color: project.color,
+        executiveHealth: project.health,
+        repoUrl: project.repoUrl,
         startDate: project.startDate,
         dueDate: project.dueDate,
         createdAt: project.createdAt,
         updatedAt: project.updatedAt,
         createdBy: project.createdBy,
+        lead: project.lead,
         membersCount: project._count.projectMembers,
         boardsCount: project._count.boards,
         taskCounts: {

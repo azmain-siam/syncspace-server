@@ -7,6 +7,7 @@ export class UpdateProjectDto extends PartialType(CreateProjectDto) {
   @ApiPropertyOptional({
     example: ProjectStatus.ACTIVE,
     enum: ProjectStatus,
+    description: 'Current lifecycle status of the project',
   })
   @IsOptional()
   @IsEnum(ProjectStatus)
