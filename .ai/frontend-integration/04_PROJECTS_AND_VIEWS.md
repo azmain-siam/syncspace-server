@@ -45,7 +45,8 @@ export interface UserMinimal {
   id: string;
   name: string;
   email: string;
-  avatarUrl: string | null;
+  avatar: string | null;
+  username?: string | null;
 }
 
 export interface ProjectLink {
@@ -134,7 +135,7 @@ export interface ProjectDetail extends ProjectSummary {
 
 ### 2.1 Create Project
 - **Method**: `POST`
-- **URL**: `/api/v1/projects/:workspaceId`
+- **URL**: `/api/v1/workspaces/:workspaceId/projects`
 - **Permission**: Workspace `OWNER`, `ADMIN`, or `MEMBER`
 - **Behavior**: Auto-generates `key` (if omitted) and `slug` (if omitted). Defaults `leadId` to current user. Auto-adds creator as `MANAGER` and lead as `LEAD`. Auto-creates default Kanban Board ("To Do", "In Progress", "Done").
 
@@ -191,13 +192,13 @@ export interface ProjectDetail extends ProjectSummary {
       "id": "user-uuid-1",
       "name": "Sarah Connor",
       "email": "sarah@syncspace.io",
-      "avatarUrl": null
+      "avatar": null
     },
     "lead": {
       "id": "3fa85f64-5717-4562-b3fc-2c963f66afa6",
       "name": "Alex Techlead",
       "email": "alex@syncspace.io",
-      "avatarUrl": "https://avatar.url"
+      "avatar": "https://avatar.url"
     }
   }
 }
@@ -207,7 +208,7 @@ export interface ProjectDetail extends ProjectSummary {
 
 ### 2.2 List Workspace Projects
 - **Method**: `GET`
-- **URL**: `/api/v1/projects/:workspaceId`
+- **URL**: `/api/v1/workspaces/:workspaceId/projects`
 - **Behavior**: Returns all non-archived projects. If caller is regular `MEMBER`, filters out `PRIVATE` projects unless caller is a member of that project.
 
 #### Response (200 OK)
@@ -233,13 +234,13 @@ export interface ProjectDetail extends ProjectSummary {
         "id": "3fa85f64-5717-4562-b3fc-2c963f66afa6",
         "name": "Alex Techlead",
         "email": "alex@syncspace.io",
-        "avatarUrl": null
+        "avatar": null
       },
       "createdBy": {
         "id": "user-uuid-1",
         "name": "Sarah Connor",
         "email": "sarah@syncspace.io",
-        "avatarUrl": null
+        "avatar": null
       },
       "_count": {
         "projectMembers": 5,
@@ -256,7 +257,7 @@ export interface ProjectDetail extends ProjectSummary {
 
 ### 2.3 Get Project by ID or Slug
 - **Method**: `GET`
-- **URL**: `/api/v1/projects/:workspaceId/:projectIdOrSlug` (Accepts UUID or slug)
+- **URL**: `/api/v1/workspaces/:workspaceId/projects/:projectId` (Accepts UUID or slug)
 - **Permissions**: Enforces `PRIVATE` access guard (returns 403 if user lacks access).
 
 #### Response (200 OK)
@@ -283,7 +284,7 @@ export interface ProjectDetail extends ProjectSummary {
       "id": "3fa85f64-5717-4562-b3fc-2c963f66afa6",
       "name": "Alex Techlead",
       "email": "alex@syncspace.io",
-      "avatarUrl": null
+      "avatar": null
     },
     "projectMembers": [
       {
@@ -295,7 +296,7 @@ export interface ProjectDetail extends ProjectSummary {
           "id": "3fa85f64-5717-4562-b3fc-2c963f66afa6",
           "name": "Alex Techlead",
           "email": "alex@syncspace.io",
-          "avatarUrl": null
+          "avatar": null
         }
       }
     ],
@@ -306,7 +307,7 @@ export interface ProjectDetail extends ProjectSummary {
         "title": "Figma Wireframes",
         "url": "https://figma.com/file/xyz",
         "type": "FIGMA",
-        "createdBy": { "id": "user-uuid-1", "name": "Sarah Connor", "email": "sarah@syncspace.io", "avatarUrl": null },
+        "createdBy": { "id": "user-uuid-1", "name": "Sarah Connor", "email": "sarah@syncspace.io", "avatar": null },
         "createdAt": "2026-09-25T12:00:00.000Z"
       }
     ],
@@ -317,7 +318,7 @@ export interface ProjectDetail extends ProjectSummary {
         "health": "ON_TRACK",
         "message": "Completed SAML spike, starting backend implementation.",
         "createdAt": "2026-09-25T10:00:00.000Z",
-        "author": { "id": "3fa85f64-5717-4562-b3fc-2c963f66afa6", "name": "Alex Techlead", "email": "alex@syncspace.io", "avatarUrl": null }
+        "author": { "id": "3fa85f64-5717-4562-b3fc-2c963f66afa6", "name": "Alex Techlead", "email": "alex@syncspace.io", "avatar": null }
       }
     ],
     "boards": [{ "id": "board-1", "title": "Main Board", "_count": { "columns": 3 } }],
@@ -330,17 +331,24 @@ export interface ProjectDetail extends ProjectSummary {
 
 ### 2.4 Update Project
 - **Method**: `PATCH`
-- **URL**: `/api/v1/projects/:workspaceId/:projectIdOrSlug`
+- **URL**: `/api/v1/workspaces/:workspaceId/projects/:projectId`
 - **Request Body**: Partial `CreateProjectDto` + `status` (`ACTIVE`, `ARCHIVED`, `COMPLETED`).
 - **Response**: Updated `ProjectDetail`.
 
 ---
 
-### 2.5 Project Links (Resources & Bookmarks)
+### 2.5 Archive & Restore Project
+- **Archive (Dedicated)**: `PATCH /api/v1/workspaces/:workspaceId/projects/:projectId/archive`
+- **Restore**: `PATCH /api/v1/workspaces/:workspaceId/projects/:projectId/restore`
+- **Soft Delete**: `DELETE /api/v1/workspaces/:workspaceId/projects/:projectId`
+
+---
+
+### 2.6 Project Links (Resources & Bookmarks)
 
 #### Add Link
 - **Method**: `POST`
-- **URL**: `/api/v1/projects/:workspaceId/:projectId/links`
+- **URL**: `/api/v1/workspaces/:workspaceId/projects/:projectId/links`
 - **Request Body**:
 ```json
 {
@@ -352,19 +360,19 @@ export interface ProjectDetail extends ProjectSummary {
 
 #### List Links
 - **Method**: `GET`
-- **URL**: `/api/v1/projects/:workspaceId/:projectId/links`
+- **URL**: `/api/v1/workspaces/:workspaceId/projects/:projectId/links`
 
 #### Delete Link
 - **Method**: `DELETE`
-- **URL**: `/api/v1/projects/:workspaceId/:projectId/links/:linkId`
+- **URL**: `/api/v1/workspaces/:workspaceId/projects/:projectId/links/:linkId`
 
 ---
 
-### 2.6 Executive Status Updates (Progress Reports & Health Sync)
+### 2.7 Executive Status Updates (Progress Reports & Health Sync)
 
 #### Post Status Update
 - **Method**: `POST`
-- **URL**: `/api/v1/projects/:workspaceId/:projectId/status-updates`
+- **URL**: `/api/v1/workspaces/:workspaceId/projects/:projectId/status-updates`
 - **Behavior**: Creates status log entry and atomically synchronizes the parent project's `health` column.
 - **Request Body**:
 ```json
@@ -376,17 +384,17 @@ export interface ProjectDetail extends ProjectSummary {
 
 #### List Status Updates History
 - **Method**: `GET`
-- **URL**: `/api/v1/projects/:workspaceId/:projectId/status-updates`
+- **URL**: `/api/v1/workspaces/:workspaceId/projects/:projectId/status-updates`
 
 ---
 
-### 2.7 Project Tasks (Table & List View)
+### 2.8 Project Tasks (Table & List View)
 - **Method**: `GET`
-- **URL**: `/api/v1/projects/:projectIdOrSlug/tasks`
+- **URL**: `/api/v1/workspaces/:workspaceId/projects/:projectId/tasks`
 - **Query Parameters**:
   - `page`: number (default: 1)
   - `limit`: number (default: 20)
-  - `status`: `TODO` | `IN_PROGRESS` | `IN_REVIEW` | `DONE`
+  - `status`: `TODO` | `IN_PROGRESS` | `REVIEW` | `DONE`
   - `priority`: `LOW` | `MEDIUM` | `HIGH` | `URGENT`
   - `assigneeId`: string (User UUID)
   - `labelId`: string (Label UUID)
@@ -420,7 +428,7 @@ export interface ProjectDetail extends ProjectSummary {
           "id": "user-uuid-2",
           "name": "Alex Techlead",
           "email": "alex@syncspace.io",
-          "avatarUrl": null
+          "avatar": null
         },
         "labels": [{ "id": "lbl-1", "name": "OAuth", "color": "#10B981" }],
         "checklistProgress": {
