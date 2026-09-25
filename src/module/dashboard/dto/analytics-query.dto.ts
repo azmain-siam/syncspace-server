@@ -1,6 +1,11 @@
 import { ApiPropertyOptional } from '@nestjs/swagger';
 import { Type } from 'class-transformer';
-import { IsInt, IsOptional, Max, Min } from 'class-validator';
+import { IsEnum, IsInt, IsOptional, Max, Min } from 'class-validator';
+
+export enum AnalyticsInterval {
+  DAY = 'day',
+  WEEK = 'week',
+}
 
 export class AnalyticsQueryDto {
   @ApiPropertyOptional({
@@ -14,4 +19,13 @@ export class AnalyticsQueryDto {
   @Min(1)
   @Max(90)
   days?: number = 30;
+
+  @ApiPropertyOptional({
+    enum: AnalyticsInterval,
+    default: AnalyticsInterval.DAY,
+    description: 'Grouping interval for time-series data',
+  })
+  @IsOptional()
+  @IsEnum(AnalyticsInterval)
+  interval?: AnalyticsInterval = AnalyticsInterval.DAY;
 }

@@ -24,12 +24,34 @@ import { MoveTaskDto } from './dto/move-task.dto';
 import { MyTasksQueryDto } from './dto/my-tasks-query.dto';
 import { TaskQueryDto } from './dto/task-query.dto';
 import { UpdateTaskDto } from './dto/update-task.dto';
+import { WorkspaceTasksQueryDto } from './dto/workspace-tasks-query.dto';
 import { TaskService } from './task.service';
 
 @ApiTags('Tasks')
 @Controller()
 export class TaskController {
   constructor(private readonly taskService: TaskService) {}
+
+  @Get('workspaces/:workspaceId/tasks')
+  @UseGuards(JwtAuthGuard, WorkspaceRoleGuard)
+  @WorkspaceRoles(
+    WorkspaceRole.OWNER,
+    WorkspaceRole.ADMIN,
+    WorkspaceRole.MEMBER,
+    WorkspaceRole.GUEST,
+  )
+  @ResponseMessage('Workspace tasks fetched successfully')
+  @ApiOperation({
+    summary:
+      'Get all tasks across the workspace with filtering, sorting and grouping',
+  })
+  getWorkspaceTasks(
+    @Param('workspaceId') workspaceId: string,
+    @Query() query: WorkspaceTasksQueryDto,
+    @CurrentUser() user: User,
+  ) {
+    return this.taskService.getWorkspaceTasks(workspaceId, query, user);
+  }
 
   @Get('workspaces/:workspaceId/my-tasks')
   @UseGuards(JwtAuthGuard, WorkspaceRoleGuard)

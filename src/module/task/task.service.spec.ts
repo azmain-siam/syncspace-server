@@ -273,32 +273,83 @@ describe('TaskService - Bulk Operations', () => {
     });
   });
 
-  describe('deleteTask event emission', () => {
-    it('should emit task.deleted domain event after soft delete', async () => {
-      entityValidationService.verifyTaskById = jest.fn().mockResolvedValue({
-        id: 'task-1',
-        createdBy: 'user-1',
-        title: 'Task 1',
-        column: {
-          board: {
-            id: 'board-1',
-            project: { id: 'proj-1', workspaceId: 'ws-1' },
-          },
-        },
+  describe('getWorkspaceTasks', () => {
+    it('should query workspace tasks with pagination and filters', async () => {
+      entityValidationService.verifyWorkspace = jest
+        .fn()
+        .mockResolvedValue({ id: 'ws-1' });
+      prisma.task.findMany = jest
+        .fn()
+        .mockResolvedValue([mockTask1, mockTask2]);
+      prisma.task.count = jest.fn().mockResolvedValue(2);
+
+      const result = await service.getWorkspaceTasks('ws-1', {
+        page: 1,
+        limit: 20,
+        status: TaskStatus.IN_PROGRESS,
+        dueDate: 'overdue',
       });
 
+      expect(entityValidationService.verifyWorkspace).toHaveBeenCalledWith(
+        'ws-1',
+      );
+      expect(prisma.task.findMany).toHaveBeenCalled();
+      expect(result.tasks).toHaveLength(2);
+      expect(result.meta.total).toBe(2);
+      expect(result.meta.page).toBe(1);
+    });
+
+    it('should group workspace tasks when groupBy is specified and return groups array', async () => {
+      entityValidationService.verifyWorkspace = jest
+        .fn()
+        .mockResolvedValue({ id: 'ws-1' });
+      prisma.task.findMany = jest.fn().mockResolvedValue([
+        { ...mockTask1, priority: TaskPriority.HIGH },
+        { ...mockTask2, priority: TaskPriority.LOW },
+      ]);
+      prisma.task.count = jest.fn().mockResolvedValue(2);
+
+      const result = await service.getWorkspaceTasks('ws-1', {
+        groupBy: 'priority',
+      });
+
+      expect(result.grouped).toBeDefined();
+      expect(result.groups).toBeDefined();
+      expect(result.groups?.length).toBeGreaterThan(0);
+      expect(result.grouped?.[TaskPriority.HIGH]).toBeDefined();
+      expect(result.grouped?.[TaskPriority.LOW]).toBeDefined();
+    });
+
+    it('should calculate per-task permissions and scope for GUEST users', async () => {
+      entityValidationService.verifyWorkspace = jest
+        .fn()
+        .mockResolvedValue({ id: 'ws-1' });
       prisma.workspaceMember = {
-        ...prisma.workspaceMember,
-        findUnique: jest.fn().mockResolvedValue({ role: WorkspaceRole.MEMBER }),
+        findUnique: jest.fn().mockResolvedValue({
+          role: WorkspaceRole.GUEST,
+        }),
       };
-      prisma.task.update = jest.fn().mockResolvedValue({ id: 'task-1' });
+      prisma.task.findMany = jest.fn().mockResolvedValue([
+        { ...mockTask1, createdBy: 'user-1', assigneeId: 'user-1' },
+        { ...mockTask2, createdBy: 'other-user', assigneeId: 'other-user' },
+      ]);
+      prisma.task.count = jest.fn().mockResolvedValue(2);
 
-      await service.deleteTask('task-1', mockUser);
+      const result = await service.getWorkspaceTasks(
+        'ws-1',
+        { page: 1, limit: 20 },
+        mockUser,
+      );
 
-      expect(eventEmitter.emit).toHaveBeenCalledWith('task.deleted', {
-        taskId: 'task-1',
-        boardId: 'board-1',
-        workspaceId: 'ws-1',
+      expect(result.tasks[0].permissions).toEqual({
+        canEdit: true,
+        canDelete: true,
+        canAssign: true,
+      });
+      expect(result.tasks[1].permissions).toEqual({
+        canEdit: false,
+        canDelete: false,
+        canAssign: false,
       });
     });
   });

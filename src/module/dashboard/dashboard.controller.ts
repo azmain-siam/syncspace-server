@@ -21,9 +21,14 @@ export class DashboardController {
     WorkspaceRole.MEMBER,
   )
   @ResponseMessage('Workspace dashboard summary fetched successfully')
-  @ApiOperation({ summary: 'Get high-level KPI cards for workspace dashboard' })
-  getWorkspaceSummary(@Param('workspaceId') workspaceId: string) {
-    return this.dashboardService.getWorkspaceSummary(workspaceId);
+  @ApiOperation({
+    summary: 'Get high-level KPI cards with historical trend deltas',
+  })
+  getWorkspaceSummary(
+    @Param('workspaceId') workspaceId: string,
+    @Query() query: AnalyticsQueryDto,
+  ) {
+    return this.dashboardService.getWorkspaceSummary(workspaceId, query);
   }
 
   @Get('task-distribution')
@@ -50,13 +55,43 @@ export class DashboardController {
   )
   @ResponseMessage('Productivity analytics fetched successfully')
   @ApiOperation({
-    summary: 'Get task creation vs completion productivity metrics',
+    summary: 'Get bucketed time-series task velocity and throughput metrics',
   })
   getProductivityMetrics(
     @Param('workspaceId') workspaceId: string,
     @Query() query: AnalyticsQueryDto,
   ) {
     return this.dashboardService.getProductivityMetrics(workspaceId, query);
+  }
+
+  @Get('sprint-health')
+  @UseGuards(JwtAuthGuard, WorkspaceRoleGuard)
+  @WorkspaceRoles(
+    WorkspaceRole.OWNER,
+    WorkspaceRole.ADMIN,
+    WorkspaceRole.MEMBER,
+  )
+  @ResponseMessage('Sprint health rollups fetched successfully')
+  @ApiOperation({
+    summary: 'Get active sprint rollup and health indicators across workspace',
+  })
+  getWorkspaceSprintHealth(@Param('workspaceId') workspaceId: string) {
+    return this.dashboardService.getWorkspaceSprintHealth(workspaceId);
+  }
+
+  @Get('project-rollups')
+  @UseGuards(JwtAuthGuard, WorkspaceRoleGuard)
+  @WorkspaceRoles(
+    WorkspaceRole.OWNER,
+    WorkspaceRole.ADMIN,
+    WorkspaceRole.MEMBER,
+  )
+  @ResponseMessage('Project rollups fetched successfully')
+  @ApiOperation({
+    summary: 'Get per-project health, capacity, and progress rollups',
+  })
+  getProjectRollups(@Param('workspaceId') workspaceId: string) {
+    return this.dashboardService.getProjectRollups(workspaceId);
   }
 
   @Get('member-workload')
@@ -68,7 +103,7 @@ export class DashboardController {
   )
   @ResponseMessage('Member workload breakdown fetched successfully')
   @ApiOperation({
-    summary: 'Get task assignments and completion rates per workspace member',
+    summary: 'Get task assignments, WIP counts, and capacity status per member',
   })
   getMemberWorkload(@Param('workspaceId') workspaceId: string) {
     return this.dashboardService.getMemberWorkload(workspaceId);

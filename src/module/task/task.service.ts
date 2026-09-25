@@ -25,6 +25,7 @@ import { MoveTaskDto } from './dto/move-task.dto';
 import { MyTasksQueryDto } from './dto/my-tasks-query.dto';
 import { TaskQueryDto } from './dto/task-query.dto';
 import { UpdateTaskDto } from './dto/update-task.dto';
+import { WorkspaceTasksQueryDto } from './dto/workspace-tasks-query.dto';
 
 @Injectable()
 export class TaskService {
@@ -300,6 +301,335 @@ export class TaskService {
     }
 
     return task;
+  }
+
+  // Central Workspace Task Explorer: Query All Tasks in Workspace with Dynamic Filters, Sorting, Permissions & Grouping
+  async getWorkspaceTasks(
+    workspaceId: string,
+    query: WorkspaceTasksQueryDto,
+    currentUser?: User,
+  ) {
+    await this.entityValidationService.verifyWorkspace(workspaceId);
+
+    const page = query.page ?? 1;
+    const limit = query.limit ?? 20;
+    const skip = (page - 1) * limit;
+
+    let userWorkspaceRole: WorkspaceRole = WorkspaceRole.MEMBER;
+    if (currentUser) {
+      const member = await this.prisma.workspaceMember.findUnique({
+        where: {
+          workspaceId_userId: {
+            workspaceId,
+            userId: currentUser.id,
+          },
+        },
+      });
+      if (member) {
+        userWorkspaceRole = member.role;
+      }
+    }
+
+    const now = new Date();
+    const startOfToday = new Date(
+      now.getFullYear(),
+      now.getMonth(),
+      now.getDate(),
+    );
+    const endOfToday = new Date(
+      now.getFullYear(),
+      now.getMonth(),
+      now.getDate(),
+      23,
+      59,
+      59,
+      999,
+    );
+
+    let dueDateFilter: Prisma.DateTimeNullableFilter | undefined;
+    let statusFilterCondition:
+      | Prisma.EnumTaskStatusFilter
+      | TaskStatus
+      | undefined;
+
+    if (query.status) {
+      if (Array.isArray(query.status)) {
+        statusFilterCondition = { in: query.status };
+      } else if (
+        typeof query.status === 'string' &&
+        query.status.includes(',')
+      ) {
+        statusFilterCondition = {
+          in: query.status.split(',').map((s) => s.trim()) as TaskStatus[],
+        };
+      } else {
+        statusFilterCondition = query.status;
+      }
+    }
+
+    let priorityFilterCondition:
+      | Prisma.EnumTaskPriorityFilter
+      | TaskPriority
+      | undefined;
+
+    if (query.priority) {
+      if (Array.isArray(query.priority)) {
+        priorityFilterCondition = { in: query.priority };
+      } else if (
+        typeof query.priority === 'string' &&
+        query.priority.includes(',')
+      ) {
+        priorityFilterCondition = {
+          in: query.priority.split(',').map((p) => p.trim()) as TaskPriority[],
+        };
+      } else {
+        priorityFilterCondition = query.priority;
+      }
+    }
+
+    if (query.dueDate === 'today') {
+      dueDateFilter = { gte: startOfToday, lte: endOfToday };
+    } else if (query.dueDate === 'overdue') {
+      dueDateFilter = { lt: startOfToday };
+      if (!query.status) {
+        statusFilterCondition = { not: TaskStatus.DONE };
+      }
+    } else if (query.dueDate === 'upcoming') {
+      dueDateFilter = { gt: endOfToday };
+    } else if (query.dueDate === 'this_week') {
+      const endOfSevenDays = new Date(
+        startOfToday.getTime() + 7 * 24 * 60 * 60 * 1000 - 1,
+      );
+      dueDateFilter = { gte: startOfToday, lte: endOfSevenDays };
+    } else if (query.dueDate === 'nodate' || query.dueDate === 'no_due_date') {
+      dueDateFilter = { equals: null };
+    }
+
+    let assigneeFilter: Prisma.StringNullableFilter | string | null | undefined;
+    if (
+      query.assigneeId === 'unassigned' ||
+      query.assigneeId === 'none' ||
+      query.assigneeId === 'null'
+    ) {
+      assigneeFilter = null;
+    } else if (query.assigneeId === 'me' && currentUser) {
+      assigneeFilter = currentUser.id;
+    } else if (query.assigneeId) {
+      if (query.assigneeId.includes(',')) {
+        assigneeFilter = {
+          in: query.assigneeId.split(',').map((a) => a.trim()),
+        };
+      } else {
+        assigneeFilter = query.assigneeId;
+      }
+    }
+
+    let sprintFilter: Prisma.StringNullableFilter | string | null | undefined;
+    if (query.sprintId === 'none') {
+      sprintFilter = null;
+    } else if (query.sprintId) {
+      sprintFilter = query.sprintId;
+    }
+
+    let projectFilterCondition: Prisma.StringFilter | string | undefined;
+    if (query.projectId) {
+      if (Array.isArray(query.projectId)) {
+        projectFilterCondition = { in: query.projectId };
+      } else if (
+        typeof query.projectId === 'string' &&
+        query.projectId.includes(',')
+      ) {
+        projectFilterCondition = {
+          in: query.projectId.split(',').map((p) => p.trim()),
+        };
+      } else {
+        projectFilterCondition = query.projectId;
+      }
+    }
+
+    const where: Prisma.TaskWhereInput = {
+      deletedAt: null,
+      column: {
+        board: {
+          project: {
+            workspaceId,
+            deletedAt: null,
+            ...(projectFilterCondition ? { id: projectFilterCondition } : {}),
+            ...(userWorkspaceRole === WorkspaceRole.GUEST && currentUser
+              ? { projectMembers: { some: { userId: currentUser.id } } }
+              : {}),
+          },
+        },
+      },
+      ...(statusFilterCondition ? { status: statusFilterCondition } : {}),
+      ...(priorityFilterCondition ? { priority: priorityFilterCondition } : {}),
+      ...(assigneeFilter !== undefined ? { assigneeId: assigneeFilter } : {}),
+      ...(sprintFilter !== undefined ? { sprintId: sprintFilter } : {}),
+      ...(query.isBacklog !== undefined ? { isBacklog: query.isBacklog } : {}),
+      ...(dueDateFilter ? { dueDate: dueDateFilter } : {}),
+      ...(query.search
+        ? {
+            OR: [
+              { title: { contains: query.search, mode: 'insensitive' } },
+              { description: { contains: query.search, mode: 'insensitive' } },
+              { key: { contains: query.search, mode: 'insensitive' } },
+            ],
+          }
+        : {}),
+    };
+
+    const sortBy = query.sortBy || 'createdAt';
+    const sortOrder = query.sortOrder || 'desc';
+
+    const orderBy: Prisma.TaskOrderByWithRelationInput[] = [];
+    if (sortBy === 'dueDate') {
+      orderBy.push({ dueDate: { sort: sortOrder, nulls: 'last' } });
+    } else if (sortBy === 'priority') {
+      orderBy.push({ priority: sortOrder });
+    } else if (sortBy === 'status') {
+      orderBy.push({ status: sortOrder });
+    } else if (sortBy === 'title') {
+      orderBy.push({ title: sortOrder });
+    } else if (sortBy === 'order') {
+      orderBy.push({ order: sortOrder });
+    } else if (sortBy === 'updatedAt') {
+      orderBy.push({ updatedAt: sortOrder });
+    } else {
+      orderBy.push({ createdAt: sortOrder });
+    }
+
+    const [tasks, total] = await Promise.all([
+      this.prisma.task.findMany({
+        where,
+        orderBy,
+        skip,
+        take: limit,
+        include: {
+          column: {
+            select: {
+              id: true,
+              title: true,
+              board: {
+                select: {
+                  id: true,
+                  title: true,
+                  project: {
+                    select: {
+                      id: true,
+                      title: true,
+                      key: true,
+                      slug: true,
+                      color: true,
+                    },
+                  },
+                },
+              },
+            },
+          },
+          sprint: {
+            select: {
+              id: true,
+              name: true,
+              status: true,
+            },
+          },
+          assignee: { select: SAFE_USER_MINIMAL_SELECT },
+          creator: { select: SAFE_USER_MINIMAL_SELECT },
+          labels: {
+            select: {
+              id: true,
+              name: true,
+              color: true,
+            },
+          },
+          _count: {
+            select: {
+              comments: true,
+              attachments: true,
+              links: true,
+              checklists: true,
+            },
+          },
+        },
+      }),
+      this.prisma.task.count({ where }),
+    ]);
+
+    const canManageWorkspace =
+      userWorkspaceRole === WorkspaceRole.OWNER ||
+      userWorkspaceRole === WorkspaceRole.ADMIN;
+
+    const enrichedTasks = tasks.map((t) => {
+      const isCreator = Boolean(currentUser && t.createdBy === currentUser.id);
+      const isAssignee = Boolean(
+        currentUser && t.assigneeId === currentUser.id,
+      );
+
+      return {
+        ...t,
+        permissions: {
+          canEdit: Boolean(
+            canManageWorkspace ||
+            userWorkspaceRole === WorkspaceRole.MEMBER ||
+            isCreator ||
+            isAssignee,
+          ),
+          canDelete: Boolean(canManageWorkspace || isCreator),
+          canAssign: Boolean(
+            canManageWorkspace ||
+            userWorkspaceRole === WorkspaceRole.MEMBER ||
+            isCreator,
+          ),
+        },
+      };
+    });
+
+    const isGrouped = query.groupBy && query.groupBy !== 'none';
+    let grouped: Record<string, typeof enrichedTasks> | null = null;
+    let groups: Array<{
+      key: string;
+      label: string;
+      tasksCount: number;
+      tasks: typeof enrichedTasks;
+      hasMore: boolean;
+    }> | null = null;
+
+    if (isGrouped) {
+      grouped = {};
+      for (const t of enrichedTasks) {
+        let groupKey = 'Other';
+        if (query.groupBy === 'project') {
+          groupKey = t.column.board.project.title || 'Untitled Project';
+        } else if (query.groupBy === 'priority') {
+          groupKey = t.priority;
+        } else if (query.groupBy === 'status') {
+          groupKey = t.status;
+        } else if (query.groupBy === 'assignee') {
+          groupKey = t.assignee?.name || 'Unassigned';
+        } else if (query.groupBy === 'dueDate') {
+          if (!t.dueDate) groupKey = 'No Due Date';
+          else if (new Date(t.dueDate) < startOfToday) groupKey = 'Overdue';
+          else if (new Date(t.dueDate) <= endOfToday) groupKey = 'Due Today';
+          else groupKey = 'Upcoming';
+        }
+        if (!grouped[groupKey]) grouped[groupKey] = [];
+        grouped[groupKey].push(t);
+      }
+
+      groups = Object.entries(grouped).map(([key, groupTasks]) => ({
+        key,
+        label: key,
+        tasksCount: groupTasks.length,
+        tasks: groupTasks,
+        hasMore: groupTasks.length >= limit,
+      }));
+    }
+
+    return {
+      tasks: enrichedTasks,
+      ...(isGrouped ? { groupedBy: query.groupBy, groups, grouped } : {}),
+      meta: calculatePaginationMeta(total, page, limit),
+    };
   }
 
   // Central Personal Inbox: Get All Tasks Assigned to User in Workspace

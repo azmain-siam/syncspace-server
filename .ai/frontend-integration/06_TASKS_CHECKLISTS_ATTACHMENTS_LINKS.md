@@ -14,6 +14,7 @@ This document is the definitive integration guide for **Tasks, Subtask Checklist
 | `PATCH` | `/api/v1/tasks/:taskId` | Update task properties | `OWNER`, `ADMIN`, `MEMBER` | `task.updated`, `task.assigned` |
 | `POST` | `/api/v1/tasks/:taskId/move` | Move task to column / reorder | `OWNER`, `ADMIN`, `MEMBER` | `task.moved` |
 | `DELETE`| `/api/v1/tasks/:taskId` | Soft-delete task | `OWNER`, `ADMIN`, or Creator | `task.deleted` |
+| `GET` | `/api/v1/workspaces/:workspaceId/tasks` | Workspace task explorer & KPI drilldown query | `OWNER`, `ADMIN`, `MEMBER`, `GUEST` | — |
 | `GET` | `/api/v1/workspaces/:workspaceId/my-tasks` | Personal workspace inbox (assigned tasks) | `OWNER`, `ADMIN`, `MEMBER`, `GUEST` | — |
 | `POST` | `/api/v1/tasks/bulk-update` | Bulk update multiple tasks | `OWNER`, `ADMIN`, `MEMBER` | `tasks.bulk_updated` |
 | `POST` | `/api/v1/tasks/bulk-delete` | Bulk soft-delete multiple tasks | `OWNER`, `ADMIN`, or Creator | `tasks.bulk_deleted` |
@@ -434,7 +435,101 @@ Handles reindexing in the target column and **automatically synchronizes `Task.s
 
 ---
 
-### 3.5 Personal Workspace Inbox: "My Tasks"
+### 3.5 Workspace Task Explorer & KPI Drilldown (Workspace-Wide Query)
+Queries all active tasks across all projects within the given workspace. Supports multi-dimensional filtering, sorting, pagination, and grouping (unblocks KPI drilldown interactions such as clicking *"3 Overdue"* or *"11 In Progress"*).
+
+- **Endpoint:** `GET /api/v1/workspaces/:workspaceId/tasks`
+- **Query Parameters:**
+  - `status`: `TODO` | `IN_PROGRESS` | `REVIEW` | `DONE`
+  - `priority`: `LOW` | `MEDIUM` | `HIGH` | `URGENT`
+  - `assigneeId`: UUID or `"unassigned"`
+  - `projectId`: Filter by project UUID
+  - `sprintId`: Filter by sprint UUID or `"none"`
+  - `isBacklog`: `true` | `false`
+  - `dueDate`: `'today'` | `'overdue'` | `'upcoming'` | `'nodate'`
+  - `search`: Search text across task title, description, or key
+  - `sortBy`: `'dueDate'` | `'priority'` | `'status'` | `'createdAt'` | `'updatedAt'` | `'title'` | `'order'` (default: `'createdAt'`)
+  - `sortOrder`: `'asc'` | `'desc'` (default: `'desc'`)
+  - `groupBy`: `'project'` | `'priority'` | `'status'` | `'dueDate'` | `'assignee'`
+  - `page`: default 1
+  - `limit`: default 20 (max 100)
+- **Example Request:** `GET /api/v1/workspaces/ws-uuid-1/tasks?dueDate=overdue&limit=20`
+- **Success Response (200 OK):**
+```json
+{
+  "success": true,
+  "statusCode": 200,
+  "message": "Workspace tasks fetched successfully",
+  "data": {
+    "tasks": [
+      {
+        "id": "7b29a14e-f823-4211-92b4-7bb9cf88ef4a",
+        "columnId": "11111111-2222-3333-4444-555555555555",
+        "key": "SYNC-14",
+        "title": "Implement JWT auth interceptor",
+        "description": "Handle token refresh rotation",
+        "priority": "HIGH",
+        "status": "IN_PROGRESS",
+        "dueDate": "2026-09-20T12:00:00.000Z",
+        "order": 1,
+        "storyPoints": 5,
+        "estimatedHours": 6.0,
+        "isBacklog": false,
+        "createdAt": "2026-09-18T10:00:00.000Z",
+        "updatedAt": "2026-09-20T14:00:00.000Z",
+        "assignee": {
+          "id": "d9b2d63d-a233-4123-8478-8270141f1a5a",
+          "name": "Jane Doe",
+          "email": "jane@example.com",
+          "avatar": null
+        },
+        "creator": {
+          "id": "88888888-9999-aaaa-bbbb-cccccccccccc",
+          "name": "Siam Admin",
+          "email": "siam@example.com",
+          "avatar": null
+        },
+        "column": {
+          "id": "11111111-2222-3333-4444-555555555555",
+          "title": "In Progress",
+          "board": {
+            "id": "board-uuid-1",
+            "title": "Main Kanban",
+            "project": {
+              "id": "proj-uuid-1",
+              "title": "SyncSpace Client",
+              "key": "SYNC",
+              "color": "#6366F1"
+            }
+          }
+        },
+        "labels": [],
+        "checklists": [
+          { "id": "chk-1", "title": "Unit tests", "isCompleted": true, "order": 0 }
+        ],
+        "_count": {
+          "comments": 3,
+          "attachments": 1,
+          "links": 1,
+          "checklists": 1
+        }
+      }
+    ],
+    "meta": {
+      "total": 1,
+      "page": 1,
+      "limit": 20,
+      "totalPages": 1,
+      "hasNextPage": false,
+      "hasPrevPage": false
+    }
+  }
+}
+```
+
+---
+
+### 3.6 Personal Workspace Inbox: "My Tasks"
 Fetches all active tasks assigned to the current user across all projects within the given workspace.
 
 - **Endpoint:** `GET /api/v1/workspaces/:workspaceId/my-tasks`
@@ -846,6 +941,20 @@ export function useMyTasks(workspaceId: string, filters?: Record<string, any>) {
     queryKey: ['my-tasks', workspaceId, filters],
     queryFn: async () => {
       const res = await apiClient.get(`/workspaces/${workspaceId}/my-tasks`, {
+        params: filters,
+      });
+      return res.data.data;
+    },
+    enabled: Boolean(workspaceId),
+  });
+}
+
+// 7. Workspace-Wide Task Explorer & KPI Drilldown
+export function useWorkspaceTasks(workspaceId: string, filters?: Record<string, any>) {
+  return useQuery<PaginatedTasksResponse>({
+    queryKey: ['workspace-tasks', workspaceId, filters],
+    queryFn: async () => {
+      const res = await apiClient.get(`/workspaces/${workspaceId}/tasks`, {
         params: filters,
       });
       return res.data.data;
